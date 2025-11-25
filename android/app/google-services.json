@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "803502615276",
+    "project_id": "pixelchat-78f6b",
+    "storage_bucket": "pixelchat-78f6b.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:803502615276:android:b6697fcb68889782e013c9",
+        "android_client_info": {
+          "package_name": "com.example.pixelchat"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCIZfZW8fb1ocwrb9bJeDyiXzsWaujAjOE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
