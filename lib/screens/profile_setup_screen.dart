@@ -1,5 +1,4 @@
 import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
@@ -13,6 +12,8 @@ class ProfileSetupScreen extends StatefulWidget {
 class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
   final _nameCtrl = TextEditingController();
   File? _avatarFile;
+
+  static const Color primary = Color(0xFF7A5AF8); // PixelChat Purple
 
   Future<void> _pickAvatar() async {
     final picker = ImagePicker();
@@ -30,11 +31,8 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
   }
 
   Future<void> _saveProfile() async {
-    // TODO: aquí subes el avatar a Firebase Storage y guardas la URL + nombre en Firestore.
-    // Ejemplo:
-    // await userService.updateProfile(name: _nameCtrl.text, avatarFile: _avatarFile);
-
-    Navigator.pop(context); // o navegas al main
+    // TODO: Subir avatar y nombre a Firebase
+    Navigator.pop(context);
   }
 
   @override
@@ -46,65 +44,131 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
   @override
   Widget build(BuildContext context) {
     final avatar = _avatarFile;
+    final String initialLetter =
+        _nameCtrl.text.isNotEmpty ? _nameCtrl.text[0].toUpperCase() : "P";
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Configura tu perfil'),
+        backgroundColor: primary,
+        elevation: 0,
+        title: const Text(
+          "Configura tu perfil",
+          style: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(24.0),
+
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
         child: Column(
           children: [
+            // Avatar con sombra suave
             GestureDetector(
               onTap: _pickAvatar,
-              child: Stack(
-                alignment: Alignment.bottomRight,
-                children: [
-                  CircleAvatar(
-                    radius: 48,
-                    backgroundColor: const Color(0xFF00BCD4),
-                    backgroundImage:
-                        avatar != null ? FileImage(avatar) : null,
-                    child: avatar == null
-                        ? const Text(
-                            'P',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 40,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          )
-                        : null,
-                  ),
-                  Container(
-                    decoration: const BoxDecoration(
-                      color: Colors.black87,
-                      shape: BoxShape.circle,
+              child: Container(
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.08),
+                      blurRadius: 10,
+                      spreadRadius: 2,
                     ),
-                    padding: const EdgeInsets.all(6),
-                    child: const Icon(
-                      Icons.camera_alt,
-                      size: 20,
-                      color: Colors.white,
+                  ],
+                ),
+                child: Stack(
+                  alignment: Alignment.bottomRight,
+                  children: [
+                    CircleAvatar(
+                      radius: 56,
+                      backgroundColor: primary,
+                      backgroundImage:
+                          avatar != null ? FileImage(avatar) : null,
+                      child: avatar == null
+                          ? Text(
+                              initialLetter,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 42,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            )
+                          : null,
                     ),
-                  ),
-                ],
+
+                    // Botón de cámara estilo WhatsApp
+                    Container(
+                      decoration: BoxDecoration(
+                        color: primary,
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: Colors.white,
+                          width: 2,
+                        ),
+                      ),
+                      padding: const EdgeInsets.all(6),
+                      child: const Icon(
+                        Icons.camera_alt,
+                        color: Colors.white,
+                        size: 20,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
-            const SizedBox(height: 24),
+
+            const SizedBox(height: 32),
+
+            const Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                "Tu nombre",
+                style: TextStyle(
+                  fontWeight: FontWeight.w600,
+                  color: Colors.black54,
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
+
             TextField(
               controller: _nameCtrl,
-              decoration: const InputDecoration(
-                labelText: 'Nombre',
-                hintText: 'Cómo te verán tus contactos',
+              decoration: InputDecoration(
+                hintText: "Cómo te verán tus contactos",
+                filled: true,
+                fillColor: Colors.grey[100],
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide: BorderSide.none,
+                ),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 14,
+                ),
               ),
+              onChanged: (_) => setState(() {}),
             ),
-            const Spacer(),
+
+            const SizedBox(height: 40),
+
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: primary,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                ),
                 onPressed: _saveProfile,
-                child: const Text('Guardar'),
+                child: const Text(
+                  "Guardar",
+                  style: TextStyle(fontSize: 16, color: Colors.white),
+                ),
               ),
             ),
           ],

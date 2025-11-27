@@ -31,7 +31,8 @@ dependencies:
   flutter:
     sdk: flutter
 
-
+  video_thumbnail: ^0.5.3
+  flutter_image_compress: ^2.0.3
   cupertino_icons: ^1.0.8
   firebase_core: ^4.2.1
   firebase_auth: ^6.1.2

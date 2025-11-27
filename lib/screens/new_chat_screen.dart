@@ -18,9 +18,13 @@ class _NewChatScreenState extends State<NewChatScreen> {
   final _authService = AuthService();
   final _chatService = ChatService();
   final _currentUser = FirebaseAuth.instance.currentUser;
+
   List<app_user.User> _allUsers = [];
   List<app_user.User> _filteredUsers = [];
+
   final TextEditingController _searchController = TextEditingController();
+
+  static const Color primary = Color(0xFF7A5AF8); // PixelChat Purple
 
   @override
   void initState() {
@@ -35,15 +39,17 @@ class _NewChatScreenState extends State<NewChatScreen> {
     super.dispose();
   }
 
+  // -------------------------------------------------------
+  // Cargar usuarios (excepto el actual)
+  // -------------------------------------------------------
   Future<void> _loadAllUsers() async {
-    // Nota: En una aplicación real, esto debería ser una consulta paginada
-    // o limitada para evitar descargar toda la base de datos de usuarios.
-    // Para el propósito de esta corrección, asumimos una lista pequeña.
     try {
-      final snapshot = await FirebaseFirestore.instance.collection('users').get();
+      final snapshot =
+          await FirebaseFirestore.instance.collection('users').get();
+
       final users = snapshot.docs
           .map((doc) => app_user.User.fromMap(doc.data()))
-          .where((user) => user.uid != _currentUser?.uid) // Excluir al usuario actual
+          .where((user) => user.uid != _currentUser?.uid)
           .toList();
 
       setState(() {
@@ -51,7 +57,6 @@ class _NewChatScreenState extends State<NewChatScreen> {
         _filteredUsers = users;
       });
     } catch (e) {
-      // Manejo de error
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error al cargar usuarios: $e')),
       );
@@ -60,40 +65,43 @@ class _NewChatScreenState extends State<NewChatScreen> {
 
   void _filterUsers() {
     final query = _searchController.text.toLowerCase();
+
     setState(() {
-      _filteredUsers = _allUsers
-          .where((user) =>
-              user.username.toLowerCase().contains(query) ||
-              user.email.toLowerCase().contains(query))
-          .toList();
+      _filteredUsers = _allUsers.where((user) {
+        return user.username.toLowerCase().contains(query) ||
+            user.email.toLowerCase().contains(query);
+      }).toList();
     });
   }
 
+  // -------------------------------------------------------
+  // Crear chat directo
+  // -------------------------------------------------------
   Future<void> _startChat(app_user.User selectedUser) async {
     if (_currentUser == null) return;
 
     try {
-      // Obtener el usuario actual (necesitamos el username para el chat)
-      final currentUserData = await _authService.getUserById(_currentUser.uid);
+      final currentUserData =
+          await _authService.getUserById(_currentUser!.uid);
+
       if (currentUserData == null) {
-        throw Exception('No se pudo obtener la información del usuario actual.');
+        throw Exception('No se pudo cargar tu información.');
       }
 
       final chat = await _chatService.createDirectChat(
-        userId1: _currentUser.uid,
+        userId1: _currentUser!.uid,
         userId2: selectedUser.uid,
         user1Name: currentUserData.username,
         user2Name: selectedUser.username,
       );
 
-      if (mounted) {
-        // Navegar a la pantalla de chat
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(
-            builder: (context) => ChatDetailScreen(chat: chat),
-          ),
-        );
-      }
+      if (!mounted) return;
+
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(
+          builder: (_) => ChatDetailScreen(chat: chat),
+        ),
+      );
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error al crear chat: $e')),
@@ -101,37 +109,84 @@ class _NewChatScreenState extends State<NewChatScreen> {
     }
   }
 
+  // -------------------------------------------------------
+  // UI
+  // -------------------------------------------------------
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Nuevo Chat'),
+        backgroundColor: primary,
         elevation: 0,
+        title: const Text(
+          "Nuevo chat",
+          style: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
       ),
+
       body: Column(
         children: [
-          Padding(
-            padding: const EdgeInsets.all(8.0),
+          // ------------------------ BUSCADOR -------------------------
+          Container(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+            color: Colors.white,
             child: TextField(
               controller: _searchController,
-              decoration: const InputDecoration(
-                labelText: 'Buscar usuario por nombre o email',
-                prefixIcon: Icon(Icons.search),
-                border: OutlineInputBorder(),
+              decoration: InputDecoration(
+                hintText: "Buscar por nombre o correo",
+                prefixIcon: const Icon(Icons.search),
+                filled: true,
+                fillColor: Colors.grey[100],
+                contentPadding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(24),
+                  borderSide: BorderSide.none,
+                ),
               ),
             ),
           ),
+
+          const SizedBox(height: 4),
+          const Divider(height: 0),
+
+          // --------------------- LISTA DE USUARIOS -------------------
           Expanded(
-            child: ListView.builder(
+            child: ListView.separated(
               itemCount: _filteredUsers.length,
+              separatorBuilder: (_, __) => const Divider(height: 0),
               itemBuilder: (context, index) {
                 final user = _filteredUsers[index];
+
                 return ListTile(
+                  contentPadding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
                   leading: CircleAvatar(
-                    child: Text(user.username[0].toUpperCase()),
+                    radius: 24,
+                    backgroundColor: primary.withOpacity(0.8),
+                    child: Text(
+                      user.username[0].toUpperCase(),
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                   ),
-                  title: Text(user.username),
-                  subtitle: Text(user.email),
+                  title: Text(
+                    user.username,
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  subtitle: Text(
+                    user.email,
+                    style: TextStyle(color: Colors.grey[600]),
+                  ),
                   onTap: () => _startChat(user),
                 );
               },

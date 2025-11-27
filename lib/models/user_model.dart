@@ -1,3 +1,5 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 class User {
   final String uid;
   final String username;
@@ -21,7 +23,6 @@ class User {
     required this.lastActive,
   });
 
-  // Convertir a Map para Firestore
   Map<String, dynamic> toMap() {
     return {
       'uid': uid,
@@ -36,7 +37,6 @@ class User {
     };
   }
 
-  // Crear desde Firestore
   factory User.fromMap(Map<String, dynamic> map) {
     return User(
       uid: map['uid'] ?? '',
@@ -46,33 +46,15 @@ class User {
       profileImageUrl: map['profileImageUrl'],
       bio: map['bio'],
       twoFactorEnabled: map['twoFactorEnabled'] ?? false,
-      createdAt: map['createdAt']?.toDate() ?? DateTime.now(),
-      lastActive: map['lastActive']?.toDate() ?? DateTime.now(),
+      createdAt: _toDate(map['createdAt']),
+      lastActive: _toDate(map['lastActive']),
     );
   }
 
-  // Copiar con cambios
-  User copyWith({
-    String? uid,
-    String? username,
-    String? email,
-    String? phoneNumber,
-    String? profileImageUrl,
-    String? bio,
-    bool? twoFactorEnabled,
-    DateTime? createdAt,
-    DateTime? lastActive,
-  }) {
-    return User(
-      uid: uid ?? this.uid,
-      username: username ?? this.username,
-      email: email ?? this.email,
-      phoneNumber: phoneNumber ?? this.phoneNumber,
-      profileImageUrl: profileImageUrl ?? this.profileImageUrl,
-      bio: bio ?? this.bio,
-      twoFactorEnabled: twoFactorEnabled ?? this.twoFactorEnabled,
-      createdAt: createdAt ?? this.createdAt,
-      lastActive: lastActive ?? this.lastActive,
-    );
+  static DateTime _toDate(dynamic v) {
+    if (v == null) return DateTime.now();
+    if (v is DateTime) return v;
+    if (v is Timestamp) return v.toDate();
+    return DateTime.now();
   }
 }

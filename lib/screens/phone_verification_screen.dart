@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'profile_setup_screen.dart';
 
 class PhoneVerificationScreen extends StatefulWidget {
   const PhoneVerificationScreen({super.key});
@@ -10,21 +9,30 @@ class PhoneVerificationScreen extends StatefulWidget {
 }
 
 class _PhoneVerificationScreenState extends State<PhoneVerificationScreen> {
+  static const Color primary = Color(0xFF7A5AF8); // Morado PixelChat
+
   final _phoneController = TextEditingController();
-  final _codeController = TextEditingController();
+  final List<TextEditingController> _otpControllers =
+      List.generate(6, (_) => TextEditingController());
+
   bool _showCodeInput = false;
   bool _isLoading = false;
 
   @override
   void dispose() {
     _phoneController.dispose();
-    _codeController.dispose();
+    for (var c in _otpControllers) {
+      c.dispose();
+    }
     super.dispose();
   }
 
+  // -----------------------------------------------------------------------------
+  // Enviar SMS (simulado)
+  // -----------------------------------------------------------------------------
   void _sendCode() {
-    if (_phoneController.text.isEmpty) {
-      _showErrorDialog('Por favor ingresa un número de teléfono');
+    if (_phoneController.text.trim().isEmpty) {
+      _showError('Ingresa un número de teléfono válido.');
       return;
     }
 
@@ -33,197 +41,152 @@ class _PhoneVerificationScreenState extends State<PhoneVerificationScreen> {
     });
   }
 
+  // -----------------------------------------------------------------------------
+  // Verificar código
+  // -----------------------------------------------------------------------------
   void _verifyCode() {
-    if (_codeController.text.isEmpty) {
-      _showErrorDialog('Por favor ingresa el código');
+    final code =
+        _otpControllers.map((c) => c.text.trim()).join('').replaceAll(' ', '');
+
+    if (code.length != 6) {
+      _showError('Código incompleto');
       return;
     }
 
-    setState(() {
-      _isLoading = true;
-    });
+    setState(() => _isLoading = true);
 
     // Simular verificación
     Future.delayed(const Duration(seconds: 2), () {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-        Navigator.of(context).pushReplacementNamed('/profile-setup');
-      }
+      if (!mounted) return;
+
+      setState(() => _isLoading = false);
+
+      Navigator.pushReplacementNamed(context, '/profile-setup');
     });
   }
 
   void _skipPhoneVerification() {
-    Navigator.of(context).pushReplacementNamed('/profile-setup');
+    Navigator.pushReplacementNamed(context, '/profile-setup');
   }
 
-  void _showErrorDialog(String message) {
+  // -----------------------------------------------------------------------------
+  void _showError(String message) {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Error'),
+      builder: (_) => AlertDialog(
+        title: const Text("Error"),
         content: Text(message),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('OK'),
-          ),
+            child: const Text("OK"),
+          )
         ],
       ),
     );
   }
 
+  // -----------------------------------------------------------------------------
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-      body: SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.all(24.0),
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const SizedBox(height: 40),
-              // Botón atrás
+              // BOTÓN ATRÁS
               GestureDetector(
                 onTap: () => Navigator.pop(context),
                 child: const Icon(Icons.arrow_back, color: Colors.black),
               ),
+
               const SizedBox(height: 32),
-              // Título
-              const Text(
-                'Ingrese su número de teléfono',
-                style: TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black,
+
+              // TÍTULO
+              Text(
+                _showCodeInput
+                    ? "Introduce el código"
+                    : "Ingrese su número de teléfono",
+                style: const TextStyle(
+                  fontSize: 26,
+                  fontWeight: FontWeight.w700,
                 ),
               ),
+
               const SizedBox(height: 8),
-              const Text(
-                'Por favor, confirme el código de su país e introduzca su número de teléfono.\n(Opcional)',
+
+              Text(
+                _showCodeInput
+                    ? "Te hemos enviado un SMS con un código de 6 dígitos."
+                    : "Confirma tu país e ingresa tu número de teléfono. (Opcional)",
                 style: TextStyle(
+                  color: Colors.grey[600],
                   fontSize: 14,
-                  color: Colors.grey,
                 ),
               ),
+
               const SizedBox(height: 32),
-              // Campo de teléfono
-              if (!_showCodeInput)
-                TextField(
-                  controller: _phoneController,
-                  keyboardType: TextInputType.phone,
-                  decoration: InputDecoration(
-                    hintText: 'Número de teléfono',
-                    hintStyle: const TextStyle(color: Colors.grey),
-                    filled: true,
-                    fillColor: Colors.grey[100],
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide.none,
-                    ),
-                  ),
-                ),
-              // Campo de código
-              if (_showCodeInput)
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Introducir código',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    const Text(
-                      'Te hemos enviado un SMS con el código al +1-809-111-0101',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.grey,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: List.generate(
-                        4,
-                        (index) => SizedBox(
-                          width: 60,
-                          height: 60,
-                          child: TextField(
-                            textAlign: TextAlign.center,
-                            keyboardType: TextInputType.number,
-                            maxLength: 1,
-                            decoration: InputDecoration(
-                              counterText: '',
-                              filled: true,
-                              fillColor: Colors.grey[100],
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12),
-                                borderSide: BorderSide.none,
-                              ),
-                            ),
-                            style: const TextStyle(
-                              fontSize: 24,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    Center(
-                      child: GestureDetector(
-                        onTap: () {
-                          setState(() {
-                            _showCodeInput = false;
-                          });
-                        },
-                        child: const Text(
-                          'Reenviar código',
-                          style: TextStyle(
-                            color: Color(0xFF00BCD4),
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              const SizedBox(height: 32),
-              // Botón de continuar
+
+              // ------------------------------------------------------------
+              // MODO 1: INGRESAR TELÉFONO
+              // ------------------------------------------------------------
+              if (!_showCodeInput) _buildPhoneInput(),
+
+              // ------------------------------------------------------------
+              // MODO 2: INGRESAR CÓDIGO OTP
+              // ------------------------------------------------------------
+              if (_showCodeInput) _buildOtpInput(),
+
+              const SizedBox(height: 40),
+
+              // BOTÓN CONTINUAR
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
                   onPressed: _isLoading
                       ? null
                       : (_showCodeInput ? _verifyCode : _sendCode),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: primary,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
                   child: _isLoading
                       ? const SizedBox(
                           height: 20,
                           width: 20,
                           child: CircularProgressIndicator(
                             strokeWidth: 2,
-                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                            color: Colors.white,
                           ),
                         )
-                      : const Text('Continuar'),
+                      : Text(
+                          _showCodeInput ? "Verificar código" : "Enviar código",
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
                 ),
               ),
+
               const SizedBox(height: 16),
-              // Enlace para saltar
+
+              // SALTAR
               Center(
                 child: GestureDetector(
                   onTap: _skipPhoneVerification,
-                  child: const Text(
-                    'Saltar',
+                  child: Text(
+                    "Saltar",
                     style: TextStyle(
-                      color: Color(0xFF00BCD4),
+                      color: primary,
                       fontWeight: FontWeight.bold,
+                      fontSize: 15,
                     ),
                   ),
                 ),
@@ -232,6 +195,94 @@ class _PhoneVerificationScreenState extends State<PhoneVerificationScreen> {
           ),
         ),
       ),
+    );
+  }
+
+  // -----------------------------------------------------------------------------
+  // WIDGET: INPUT DE TELÉFONO
+  // -----------------------------------------------------------------------------
+  Widget _buildPhoneInput() {
+    return TextField(
+      controller: _phoneController,
+      keyboardType: TextInputType.phone,
+      decoration: InputDecoration(
+        filled: true,
+        fillColor: Colors.grey[100],
+        hintText: "Número de teléfono",
+        prefixIcon: const Icon(Icons.phone_outlined),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide.none,
+        ),
+      ),
+    );
+  }
+
+  // -----------------------------------------------------------------------------
+  // WIDGET: INPUT DE CÓDIGO OTP
+  // -----------------------------------------------------------------------------
+  Widget _buildOtpInput() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SizedBox(height: 16),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: List.generate(
+            6,
+            (index) => SizedBox(
+              width: 48,
+              height: 58,
+              child: TextField(
+                controller: _otpControllers[index],
+                textAlign: TextAlign.center,
+                keyboardType: TextInputType.number,
+                maxLength: 1,
+                onChanged: (value) {
+                  if (value.isNotEmpty && index < 5) {
+                    FocusScope.of(context).nextFocus();
+                  }
+                },
+                style: const TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                ),
+                decoration: InputDecoration(
+                  counterText: '',
+                  filled: true,
+                  fillColor: Colors.grey[100],
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide.none,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+
+        const SizedBox(height: 16),
+
+        // Reenviar código
+        Center(
+          child: GestureDetector(
+            onTap: () {
+              setState(() {
+                for (var c in _otpControllers) {
+                  c.clear();
+                }
+              });
+            },
+            child: Text(
+              "Reenviar código",
+              style: TextStyle(
+                color: primary,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

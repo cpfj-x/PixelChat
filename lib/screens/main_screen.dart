@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'home_screen.dart';
-import 'groups_screen.dart'; // Asumo que existe o la crearé
-import 'settings_screen.dart'; // Asumo que existe o la crearé
+import 'groups_screen.dart';
+import 'settings_screen.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -13,43 +13,69 @@ class MainScreen extends StatefulWidget {
 class _MainScreenState extends State<MainScreen> {
   int _selectedIndex = 0;
 
-  static const List<Widget> _widgetOptions = <Widget>[
+  static const Color primary = Color(0xFF7A5AF8); // PixelChat Purple
+
+  final List<Widget> _screens = const [
     HomeScreen(),
     GroupsScreen(),
     SettingsScreen(),
   ];
 
-  void _onItemTapped(int index) {
-    setState(() {
-      _selectedIndex = index;
-    });
+  void _onTap(int index) {
+    setState(() => _selectedIndex = index);
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Center(
-        child: _widgetOptions.elementAt(_selectedIndex),
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+
+      body: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 250),
+        child: _screens[_selectedIndex],
       ),
-      bottomNavigationBar: BottomNavigationBar(
-        items: const <BottomNavigationBarItem>[
-          BottomNavigationBarItem(
-            icon: Icon(Icons.chat_bubble_outline),
-            label: 'Chats',
+
+      bottomNavigationBar: _bottomNavBar(),
+    );
+  }
+
+  // ---------------- BOTTOM NAV STYLE WHATSAPP ----------------
+  Widget _bottomNavBar() {
+    return BottomNavigationBar(
+      currentIndex: _selectedIndex,
+      onTap: _onTap,
+      elevation: 8,
+      type: BottomNavigationBarType.fixed,
+      selectedItemColor: primary,
+      unselectedItemColor: Colors.grey.shade600,
+      backgroundColor: Colors.white,
+
+      items: [
+        BottomNavigationBarItem(
+          icon: Icon(
+            _selectedIndex == 0
+                ? Icons.chat_bubble
+                : Icons.chat_bubble_outline,
           ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.group_outlined),
-            label: 'Grupos',
+          label: "Chats",
+        ),
+        BottomNavigationBarItem(
+          icon: Icon(
+            _selectedIndex == 1
+                ? Icons.group
+                : Icons.group_outlined,
           ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.settings_outlined),
-            label: 'Configuración',
+          label: "Grupos",
+        ),
+        BottomNavigationBarItem(
+          icon: Icon(
+            _selectedIndex == 2
+                ? Icons.settings
+                : Icons.settings_outlined,
           ),
-        ],
-        currentIndex: _selectedIndex,
-        selectedItemColor: Theme.of(context).primaryColor,
-        onTap: _onItemTapped,
-      ),
+          label: "Config",
+        ),
+      ],
     );
   }
 }

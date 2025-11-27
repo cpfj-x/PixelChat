@@ -1,3 +1,5 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 enum ChatType { direct, group, community }
 
 class Chat {
@@ -29,12 +31,14 @@ class Chat {
     required this.isMuted,
   });
 
-  // Convertir a Map para Firestore
+  // --------------------------
+  // Convertir a Firestore
+  // --------------------------
   Map<String, dynamic> toMap() {
     return {
       'name': name,
       'imageUrl': imageUrl,
-      'type': type.toString().split('.').last,
+      'type': type.name,
       'memberIds': memberIds,
       'description': description,
       'createdAt': createdAt,
@@ -46,7 +50,9 @@ class Chat {
     };
   }
 
-  // Crear desde Firestore
+  // --------------------------
+  // Leer desde Firestore
+  // --------------------------
   factory Chat.fromMap(Map<String, dynamic> map, String docId) {
     return Chat(
       id: docId,
@@ -55,8 +61,8 @@ class Chat {
       type: _parseChatType(map['type']),
       memberIds: List<String>.from(map['memberIds'] ?? []),
       description: map['description'],
-      createdAt: map['createdAt']?.toDate() ?? DateTime.now(),
-      lastMessageTime: map['lastMessageTime']?.toDate() ?? DateTime.now(),
+      createdAt: _toDate(map['createdAt']),
+      lastMessageTime: _toDate(map['lastMessageTime']),
       lastMessage: map['lastMessage'],
       lastMessageSenderId: map['lastMessageSenderId'],
       createdBy: map['createdBy'] ?? '',
@@ -64,7 +70,29 @@ class Chat {
     );
   }
 
-  // Copiar con cambios
+  // Conversión segura de fecha
+  static DateTime _toDate(dynamic value) {
+    if (value == null) return DateTime.now();
+    if (value is DateTime) return value;
+    if (value is Timestamp) return value.toDate();
+    return DateTime.now();
+  }
+
+  static ChatType _parseChatType(String? type) {
+    switch (type) {
+      case 'group':
+        return ChatType.group;
+      case 'community':
+        return ChatType.community;
+      case 'direct':
+      default:
+        return ChatType.direct;
+    }
+  }
+
+  // --------------------------
+  // CopyWith
+  // --------------------------
   Chat copyWith({
     String? id,
     String? name,
@@ -93,16 +121,5 @@ class Chat {
       createdBy: createdBy ?? this.createdBy,
       isMuted: isMuted ?? this.isMuted,
     );
-  }
-
-  static ChatType _parseChatType(String? type) {
-    switch (type) {
-      case 'group':
-        return ChatType.group;
-      case 'community':
-        return ChatType.community;
-      default:
-        return ChatType.direct;
-    }
   }
 }

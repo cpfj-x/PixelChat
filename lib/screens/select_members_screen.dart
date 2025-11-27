@@ -16,6 +16,8 @@ class SelectMembersScreen extends StatefulWidget {
 }
 
 class _SelectMembersScreenState extends State<SelectMembersScreen> {
+  static const Color primary = Color(0xFF7A5AF8); // PixelChat Purple
+
   final _selectedMembers = <app_user.User>{};
   final _currentUser = FirebaseAuth.instance.currentUser;
 
@@ -43,14 +45,30 @@ class _SelectMembersScreenState extends State<SelectMembersScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Seleccionar Miembros'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.check),
-            onPressed: _saveSelection,
+        backgroundColor: primary,
+        elevation: 0,
+        title: const Text(
+          "Seleccionar miembros",
+          style: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.w600,
           ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: _saveSelection,
+            child: const Text(
+              "Listo",
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+                fontSize: 16,
+              ),
+            ),
+          )
         ],
       ),
+
       body: StreamBuilder<QuerySnapshot>(
         stream: FirebaseFirestore.instance.collection('users').snapshots(),
         builder: (context, snapshot) {
@@ -59,29 +77,64 @@ class _SelectMembersScreenState extends State<SelectMembersScreen> {
           }
 
           if (snapshot.hasError) {
-            return Center(child: Text('Error: ${snapshot.error}'));
+            return Center(child: Text("Error: ${snapshot.error}"));
           }
 
-          final users = snapshot.data!.docs.map((doc) {
-            return app_user.User.fromMap(doc.data() as Map<String, dynamic>);
-          }).where((user) => user.uid != _currentUser?.uid).toList();
+          final users = snapshot.data!.docs
+              .map((doc) => app_user.User.fromMap(doc.data() as Map<String, dynamic>))
+              .where((u) => u.uid != _currentUser?.uid)
+              .toList();
 
-          return ListView.builder(
+          if (users.isEmpty) {
+            return const Center(
+              child: Text(
+                "No hay usuarios disponibles",
+                style: TextStyle(fontSize: 16, color: Colors.grey),
+              ),
+            );
+          }
+
+          return ListView.separated(
             itemCount: users.length,
+            separatorBuilder: (_, __) => Divider(
+              height: 0,
+              indent: 72,
+              color: Colors.grey.shade300,
+            ),
             itemBuilder: (context, index) {
               final user = users[index];
               final isSelected = _selectedMembers.contains(user);
 
               return ListTile(
                 leading: CircleAvatar(
-                  backgroundColor: isSelected ? const Color(0xFF00BCD4) : Colors.grey,
-                  child: Text(user.username[0].toUpperCase(), style: const TextStyle(color: Colors.white)),
+                  radius: 24,
+                  backgroundColor: isSelected ? primary : Colors.grey.shade400,
+                  child: Text(
+                    user.username.isNotEmpty ? user.username[0].toUpperCase() : "?",
+                    style: const TextStyle(color: Colors.white, fontSize: 20),
+                  ),
                 ),
-                title: Text(user.username),
-                subtitle: Text(user.email),
-                trailing: isSelected
-                    ? const Icon(Icons.check_circle, color: Color(0xFF00BCD4))
-                    : const Icon(Icons.radio_button_unchecked),
+
+                title: Text(
+                  user.username,
+                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                ),
+
+                subtitle: Text(
+                  user.email,
+                  style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
+                ),
+
+                trailing: AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 200),
+                  transitionBuilder: (child, anim) =>
+                      ScaleTransition(scale: anim, child: child),
+                  child: isSelected
+                      ? const Icon(Icons.check_circle, color: primary, key: ValueKey("on"))
+                      : Icon(Icons.radio_button_unchecked,
+                          color: Colors.grey.shade500, key: const ValueKey("off")),
+                ),
+
                 onTap: () => _toggleMember(user),
               );
             },

@@ -34,25 +34,31 @@ class _SplashScreenState extends State<SplashScreen>
   }
 
   Future<void> _startAnimationAndNavigate() async {
-    // Ejecutar animación del logo
+    // Iniciar animación fade-in
     _controller.forward();
 
-    // Mantener pantalla un tiempo tipo WhatsApp
+    // Duración estilo WhatsApp
     await Future.delayed(const Duration(milliseconds: 1800));
 
     if (!mounted) return;
 
     final user = FirebaseAuth.instance.currentUser;
-    final routeName = user != null ? AppRoutes.main : AppRoutes.login;
 
-    // Navegación con Fade
+    // Corrección: obtener pantallas desde AppRoutes
+    final routes = AppRoutes.getRoutes();
+
+    final nextScreen = user != null
+        ? routes[AppRoutes.main]!(context)
+        : routes[AppRoutes.login]!(context);
+
+    // Navegación con Fade suave
     Navigator.of(context).pushReplacement(
       PageRouteBuilder(
         transitionDuration: const Duration(milliseconds: 350),
         pageBuilder: (context, animation, secondaryAnimation) {
           return FadeTransition(
             opacity: animation,
-            child: AppRoutes.getRoutes()[routeName]!(context),
+            child: nextScreen,
           );
         },
       ),
@@ -71,12 +77,12 @@ class _SplashScreenState extends State<SplashScreen>
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              // ======= LOGO (Animación tipo WhatsApp) =======
+              // === LOGO PixelChat tipo WhatsApp ===
               Container(
                 width: 120,
                 height: 120,
                 decoration: BoxDecoration(
-                  color: const Color(0xFF00BCD4),
+                  color: const Color(0xFF7A5AF8), // Tu morado oficial
                   borderRadius: BorderRadius.circular(25),
                 ),
                 child: const Center(
@@ -93,7 +99,7 @@ class _SplashScreenState extends State<SplashScreen>
 
               const SizedBox(height: 30),
 
-              // ======= Lottie Animation =======
+              // === Lottie cargando ===
               SizedBox(
                 width: 120,
                 child: Lottie.asset(
@@ -105,11 +111,11 @@ class _SplashScreenState extends State<SplashScreen>
 
               const SizedBox(height: 12),
 
-              const Text(
+              Text(
                 'Conectando…',
                 style: TextStyle(
                   fontSize: 15,
-                  color: Colors.grey,
+                  color: isDark ? Colors.grey[400] : Colors.grey[600],
                 ),
               ),
             ],

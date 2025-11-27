@@ -1,11 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+
 import '../services/chat_service.dart';
 import '../models/chat_model.dart';
 import 'chat_detail_screen.dart';
-import 'new_chat_screen.dart';
 import 'new_chat_type_screen.dart';
-import 'login_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -15,162 +14,173 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  final _chatService = ChatService();
-  final _firebaseAuth = FirebaseAuth.instance;
+  final ChatService _chatService = ChatService();
+  final FirebaseAuth _firebaseAuth = FirebaseAuth.instance;
+
   late Stream<List<Chat>> _chatsStream;
+
+  static const Color primary = Color(0xFF7A5AF8); // TU COLOR MORADO
 
   @override
   void initState() {
     super.initState();
-    final user = FirebaseAuth.instance.currentUser;
-    final userId = user?.uid;
+    final user = _firebaseAuth.currentUser;
 
-    if (userId != null) {
-      // Solo chats directos (sin grupos ni comunidades)
+    if (user != null) {
       _chatsStream = _chatService
-          .getUserChats(userId)
+          .getUserChats(user.uid)
           .map((chats) => chats
               .where((chat) => chat.type == ChatType.direct)
               .toList());
     }
   }
 
-
-  void _logout() {
-    showDialog(
+  // ---------------------------- Logout ----------------------------
+  void _logout() async {
+    final confirm = await showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Cerrar sesión'),
-        content: const Text('¿Estás seguro de que deseas cerrar sesión?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancelar'),
-          ),
-          TextButton(
-            onPressed: () async {
-              await _firebaseAuth.signOut();
-              if (mounted) {
-                Navigator.of(context).pushReplacementNamed('/login');
-              }
-            },
-            child: const Text('Cerrar sesión'),
-          ),
-        ],
-      ),
+      builder: (_) {
+        return AlertDialog(
+          title: const Text("Cerrar sesión"),
+          content: const Text("¿Seguro que quieres cerrar sesión?"),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text("Cancelar"),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text("Cerrar sesión"),
+            ),
+          ],
+        );
+      },
     );
+
+    if (confirm == true) {
+      await _firebaseAuth.signOut();
+      if (!mounted) return;
+      Navigator.pushReplacementNamed(context, '/login');
+    }
   }
 
+  // ----------------------------------------------------------------
+  // BUILD UI
+  // ----------------------------------------------------------------
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.white,
+
+      // ---------------------------- APPBAR WHATSAPP ----------------------------
       appBar: AppBar(
-        title: const Text('Chats'),
+        backgroundColor: primary,
         elevation: 0,
+        title: const Text(
+          "PixelChat",
+          style: TextStyle(fontWeight: FontWeight.w600),
+        ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.logout),
-            onPressed: _logout,
+            icon: const Icon(Icons.search),
+            onPressed: () {},
+          ),
+          PopupMenuButton<int>(
+            icon: const Icon(Icons.more_vert),
+            onSelected: (value) {
+              if (value == 1) _logout();
+            },
+            itemBuilder: (context) => [
+              const PopupMenuItem(value: 1, child: Text("Cerrar sesión")),
+            ],
           ),
         ],
       ),
+
+      // ---------------------------- LISTA DE CHATS ----------------------------
       body: StreamBuilder<List<Chat>>(
         stream: _chatsStream,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(
-              child: CircularProgressIndicator(),
-            );
+            return const Center(child: CircularProgressIndicator());
           }
 
           if (snapshot.hasError) {
-            return Center(
-              child: Text('Error: ${snapshot.error}'),
-            );
+            return const Center(child: Text("Error al cargar chats"));
           }
 
           final chats = snapshot.data ?? [];
 
           if (chats.isEmpty) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.chat_bubble_outline,
-                    size: 64,
-                    color: Colors.grey[300],
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    'No hay chats aún',
-                    style: TextStyle(
-                      fontSize: 18,
-                      color: Colors.grey[600],
-                    ),
-                  ),
-                ],
+            return const Center(
+              child: Text(
+                "No tienes chats aún",
+                style: TextStyle(color: Colors.grey, fontSize: 16),
               ),
             );
           }
 
-          return ListView.builder(
+          return ListView.separated(
             itemCount: chats.length,
-            itemBuilder: (context, index) {
+            separatorBuilder: (_, __) =>
+                Divider(height: 0, color: Colors.grey.shade300),
+            itemBuilder: (_, index) {
               final chat = chats[index];
-              return ChatListItem(
-                chat: chat,
-                onTap: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (context) => ChatDetailScreen(chat: chat),
-                    ),
-                  );
-                },
-              );
+              return _chatTile(chat);
             },
           );
         },
       ),
+
+      // ---------------------------- FAB ----------------------------
       floatingActionButton: FloatingActionButton(
+        backgroundColor: primary,
+        child: const Icon(Icons.chat),
         onPressed: () {
-          Navigator.of(context).push(
-            MaterialPageRoute(
-              builder: (context) => const NewChatTypeScreen(),
-            ),
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const NewChatTypeScreen()),
           );
         },
-        child: const Icon(Icons.add),
       ),
     );
   }
-}
 
-class ChatListItem extends StatelessWidget {
-  final Chat chat;
-  final VoidCallback onTap;
-
-  const ChatListItem({
-    super.key,
-    required this.chat,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
+  // ----------------------------------------------------------------
+  // ITEM — ESTILO WHATSAPP
+  // ----------------------------------------------------------------
+  Widget _chatTile(Chat chat) {
     return ListTile(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => ChatDetailScreen(chat: chat)),
+        );
+      },
       leading: CircleAvatar(
-        backgroundColor: const Color(0xFF00BCD4),
+        radius: 26,
+        backgroundColor: primary.withOpacity(0.15),
         child: Text(
-          chat.name.isNotEmpty ? chat.name[0].toUpperCase() : '?',
-          style: const TextStyle(color: Colors.white),
+          chat.name.isNotEmpty ? chat.name[0].toUpperCase() : "?",
+          style: const TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+            color: primary,
+          ),
         ),
       ),
-      title: Text(chat.name),
+      title: Text(
+        chat.name,
+        style: const TextStyle(
+          fontWeight: FontWeight.bold,
+          fontSize: 16,
+        ),
+      ),
       subtitle: Text(
-        chat.lastMessage ?? 'Sin mensajes',
+        chat.lastMessage ?? "Sin mensajes",
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
+        style: const TextStyle(color: Colors.grey),
       ),
       trailing: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -178,28 +188,32 @@ class ChatListItem extends StatelessWidget {
         children: [
           Text(
             _formatTime(chat.lastMessageTime),
-            style: const TextStyle(fontSize: 12, color: Colors.grey),
+            style: const TextStyle(color: Colors.grey, fontSize: 12),
           ),
           if (chat.isMuted)
             const Icon(Icons.volume_off, size: 16, color: Colors.grey),
         ],
       ),
-      onTap: onTap,
     );
   }
 
-  String _formatTime(DateTime dateTime) {
+  // ----------------------------------------------------------------
+  // TIME FORMATTER
+  // ----------------------------------------------------------------
+  String _formatTime(DateTime? dateTime) {
+    if (dateTime == null) return "";
+
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
     final yesterday = today.subtract(const Duration(days: 1));
     final messageDate = DateTime(dateTime.year, dateTime.month, dateTime.day);
 
     if (messageDate == today) {
-      return '${dateTime.hour}:${dateTime.minute.toString().padLeft(2, '0')}';
+      return "${dateTime.hour}:${dateTime.minute.toString().padLeft(2, '0')}";
     } else if (messageDate == yesterday) {
-      return 'Ayer';
+      return "Ayer";
     } else {
-      return '${dateTime.day}/${dateTime.month}';
+      return "${dateTime.day}/${dateTime.month}";
     }
   }
 }

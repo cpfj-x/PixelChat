@@ -1,5 +1,4 @@
 import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:image_picker/image_picker.dart';
@@ -32,6 +31,8 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
 
   bool _isSending = false;
 
+  static const Color primary = Color(0xFF7A5AF8); // TU MORADO
+
   @override
   void initState() {
     super.initState();
@@ -44,68 +45,87 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     super.dispose();
   }
 
-  // ----------------------------------------------------------------------
-  // ENVÍO DE TEXTO
-  // ----------------------------------------------------------------------
+  // -------------------------------------------------------------------------
+  // ENVIAR MENSAJE TEXTO
+  // -------------------------------------------------------------------------
   Future<void> _sendTextMessage() async {
-    final text = _messageController.text.trim();
+    String text = _messageController.text.trim();
     if (text.isEmpty) return;
 
     final user = _firebaseAuth.currentUser;
     if (user == null) return;
 
-    try {
-      setState(() => _isSending = true);
+    setState(() => _isSending = true);
 
+    try {
       await _chatService.sendMessage(
         chatId: widget.chat.id,
         senderId: user.uid,
-        senderName: user.email ?? 'Usuario',
+        senderName: user.email ?? "Usuario",
         content: text,
       );
-
       _messageController.clear();
     } catch (e) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text('Error al enviar: $e')));
+      _showError("Error al enviar texto: $e");
     } finally {
       setState(() => _isSending = false);
     }
   }
 
-  // ----------------------------------------------------------------------
-  // IMÁGENES (GALERÍA + CÁMARA) + PREVIEW
-  // ----------------------------------------------------------------------
-
-  Future<void> _pickFromGallery() async {
-    await _handleImage(ImageSource.gallery);
-  }
-
-  Future<void> _takePhoto() async {
-    await _handleImage(ImageSource.camera);
-  }
-
-  Future<void> _handleImage(ImageSource source) async {
+  // -------------------------------------------------------------------------
+  // IMAGEN: GALERÍA + CÁMARA + PREVIEW WHATSAPP
+  // -------------------------------------------------------------------------
+  Future<void> _pickImage(ImageSource source) async {
     try {
-      final pickedFile = await _picker.pickImage(
+      final picked = await _picker.pickImage(
         source: source,
         maxWidth: 1920,
-        imageQuality: 86,
+        imageQuality: 85,
       );
 
-      if (pickedFile == null) return;
+      if (picked == null) return;
 
-      final file = File(pickedFile.path);
+      final file = File(picked.path);
 
-      // PREVIEW ANTES DE ENVIAR
-      final confirm = await _showImagePreviewDialog(file);
+      bool? confirm = await _showPreviewDialog(file);
       if (confirm != true) return;
 
-      final user = _firebaseAuth.currentUser;
-      if (user == null) return;
+      await _uploadAndSendImage(file);
+    } catch (e) {
+      _showError("Error al seleccionar imagen: $e");
+    }
+  }
 
-      setState(() => _isSending = true);
+  Future<bool?> _showPreviewDialog(File file) {
+    return showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text("Vista previa"),
+        content: ClipRRect(
+          borderRadius: BorderRadius.circular(12),
+          child: Image.file(file),
+        ),
+        actions: [
+          TextButton(
+            child: const Text("Cancelar"),
+            onPressed: () => Navigator.pop(context, false),
+          ),
+          ElevatedButton(
+            child: const Text("Enviar"),
+            onPressed: () => Navigator.pop(context, true),
+          ),
+        ],
+      ),
+    );
+  }
 
+  Future<void> _uploadAndSendImage(File file) async {
+    final user = _firebaseAuth.currentUser;
+    if (user == null) return;
+
+    setState(() => _isSending = true);
+
+    try {
       final imageUrl = await _storageService.uploadMessageImage(
         chatId: widget.chat.id,
         messageId: DateTime.now().millisecondsSinceEpoch.toString(),
@@ -115,151 +135,34 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
       await _chatService.sendMessage(
         chatId: widget.chat.id,
         senderId: user.uid,
-        senderName: user.email ?? 'Usuario',
-        content: '[Imagen]',
+        senderName: user.email ?? "Usuario",
+        content: "[Imagen]",
         imageUrls: [imageUrl],
       );
     } catch (e) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text('Error: $e')));
+      _showError("Error al subir imagen: $e");
     } finally {
       setState(() => _isSending = false);
     }
   }
 
-  Future<bool?> _showImagePreviewDialog(File file) {
-    return showDialog(
-      context: context,
-      builder: (_) {
-        return AlertDialog(
-          title: const Text("Vista previa"),
-          content: ClipRRect(
-            borderRadius: BorderRadius.circular(12),
-            child: Image.file(file),
-          ),
-          actions: [
-            TextButton(
-              child: const Text("Cancelar"),
-              onPressed: () => Navigator.pop(context, false),
-            ),
-            ElevatedButton(
-              child: const Text("Enviar"),
-              onPressed: () => Navigator.pop(context, true),
-            ),
-          ],
-        );
-      },
-    );
+  // -------------------------------------------------------------------------
+  // FUTURO: VIDEO / AUDIO / REACCIONES
+  // -------------------------------------------------------------------------
+  void _unimplemented(String msg) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
   }
 
-  // ----------------------------------------------------------------------
-  // VIDEO — (Estructura lista)
-  // ----------------------------------------------------------------------
-  Future<void> _pickVideo() async {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text("TODO: Implementar envío de videos")),
-    );
-  }
-
-  // ----------------------------------------------------------------------
-  // AUDIO WHATSAPP — (Estructura lista)
-  // ----------------------------------------------------------------------
-  Future<void> _recordAudio() async {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text("TODO: Implementar audio tipo WhatsApp")),
-    );
-  }
-
-  // ----------------------------------------------------------------------
-  // REACCIONES Y ELIMINAR MENSAJE — (Estructura lista)
-  // ----------------------------------------------------------------------
-  void _onLongPressMessage(Message message) {
-    showModalBottomSheet(
-      context: context,
-      builder: (_) {
-        return SafeArea(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const SizedBox(height: 12),
-              const Text("Acciones", style: TextStyle(fontWeight: FontWeight.bold)),
-
-              const SizedBox(height: 16),
-
-              // Reacciones rápidas
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  _reactionButton("❤️"),
-                  _reactionButton("😂"),
-                  _reactionButton("👍"),
-                  _reactionButton("🔥"),
-                ],
-              ),
-
-              const Divider(),
-
-              ListTile(
-                leading: const Icon(Icons.delete_outline),
-                title: const Text("Eliminar mensaje"),
-                onTap: () {
-                  // TODO: Eliminar en Firestore
-                  Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text("TODO: eliminar mensaje")),
-                  );
-                },
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _reactionButton(String emoji) {
-    return GestureDetector(
-      onTap: () {
-        Navigator.pop(context);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("TODO: guardar reacción $emoji")),
-        );
-      },
-      child: Text(emoji, style: const TextStyle(fontSize: 26)),
-    );
-  }
-
-  // ----------------------------------------------------------------------
-  // UI
-  // ----------------------------------------------------------------------
+  // -------------------------------------------------------------------------
+  // UI PRINCIPAL
+  // -------------------------------------------------------------------------
   @override
   Widget build(BuildContext context) {
-    final currentUserId = _firebaseAuth.currentUser?.uid;
+    final userId = _firebaseAuth.currentUser?.uid;
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(widget.chat.name),
-        elevation: 0,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.call),
-            onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text("TODO: Llamada de audio")),
-              );
-            },
-          ),
-          IconButton(
-            icon: const Icon(Icons.videocam),
-            onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text("TODO: Videollamada")),
-              );
-            },
-          ),
-        ],
-      ),
-
+      backgroundColor: Colors.grey[200],
+      appBar: _buildWhatsAppHeader(),
       body: Column(
         children: [
           Expanded(
@@ -275,17 +178,15 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
 
                 return ListView.builder(
                   reverse: true,
+                  padding: const EdgeInsets.only(top: 10),
                   itemCount: messages.length,
                   itemBuilder: (_, i) {
-                    final message = messages[i];
-                    final isMe = message.senderId == currentUserId;
+                    final msg = messages[i];
+                    final isMe = msg.senderId == userId;
 
                     return GestureDetector(
-                      onLongPress: () => _onLongPressMessage(message),
-                      child: MessageBubble(
-                        message: message,
-                        isCurrentUser: isMe,
-                      ),
+                      onLongPress: () => _showMessageActions(msg),
+                      child: MessageBubble(message: msg, isMe: isMe),
                     );
                   },
                 );
@@ -299,154 +200,335 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     );
   }
 
-  // ----------------------------------------------------------------------
-  // BARRA INFERIOR DE MENSAJE
-  // ----------------------------------------------------------------------
+  // -------------------------------------------------------------------------
+  // APPBAR ESTILO WHATSAPP
+  // -------------------------------------------------------------------------
+  PreferredSizeWidget _buildWhatsAppHeader() {
+    return AppBar(
+      backgroundColor: primary,
+      elevation: 0,
+      titleSpacing: 0,
+      title: Row(
+        children: [
+          const CircleAvatar(
+            backgroundColor: Colors.white24,
+            child: Icon(Icons.person, color: Colors.white),
+          ),
+          const SizedBox(width: 12),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                widget.chat.name,
+                style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w600),
+              ),
+              const Text(
+                "en línea",
+                style: TextStyle(fontSize: 13, color: Colors.white70),
+              ),
+            ],
+          ),
+        ],
+      ),
+      actions: [
+        IconButton(
+          icon: const Icon(Icons.videocam),
+          onPressed: () => _unimplemented("Videollamada (pronto)"),
+        ),
+        IconButton(
+          icon: const Icon(Icons.call),
+          onPressed: () => _unimplemented("Llamada (pronto)"),
+        ),
+        IconButton(
+          icon: const Icon(Icons.more_vert),
+          onPressed: () {},
+        ),
+      ],
+    );
+  }
+
+  // -------------------------------------------------------------------------
+  // BARRA INFERIOR ESTILO WHATSAPP
+  // -------------------------------------------------------------------------
   Widget _buildInputBar() {
     return SafeArea(
       child: Container(
-        padding: const EdgeInsets.all(8),
+        color: Colors.white,
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
         child: Row(
           children: [
             IconButton(
-              icon: const Icon(Icons.image, color: Color(0xFF00BCD4)),
-              onPressed: _pickFromGallery,
+              icon: const Icon(Icons.emoji_emotions_outlined, color: Colors.grey),
+              onPressed: () {},
             ),
-
             IconButton(
-              icon: const Icon(Icons.camera_alt, color: Color(0xFF00BCD4)),
-              onPressed: _takePhoto,
+              icon: const Icon(Icons.attach_file, color: Colors.grey),
+              onPressed: _openAttachmentMenu,
             ),
-
-            IconButton(
-              icon: const Icon(Icons.videocam, color: Color(0xFF00BCD4)),
-              onPressed: _pickVideo,
-            ),
-
-            IconButton(
-              icon: const Icon(Icons.mic, color: Color(0xFF00BCD4)),
-              onPressed: _recordAudio,
-            ),
-
             Expanded(
               child: TextField(
                 controller: _messageController,
-                maxLines: null,
+                minLines: 1,
+                maxLines: 5,
                 decoration: InputDecoration(
-                  hintText: "Escribe un mensaje...",
+                  hintText: "Mensaje",
                   filled: true,
                   fillColor: Colors.grey[100],
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                   border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(24),
+                    borderRadius: BorderRadius.circular(25),
                     borderSide: BorderSide.none,
-                  ),
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 8,
                   ),
                 ),
               ),
             ),
-
-            IconButton(
-              icon: _isSending
-                  ? const CircularProgressIndicator()
-                  : const Icon(Icons.send, color: Color(0xFF00BCD4)),
-              onPressed: _isSending ? null : _sendTextMessage,
-            ),
+            const SizedBox(width: 8),
+            _isSending
+                ? const SizedBox(
+                    width: 40,
+                    height: 40,
+                    child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                  )
+                : GestureDetector(
+                    onTap: _sendTextMessage,
+                    child: Container(
+                      width: 44,
+                      height: 44,
+                      decoration: const BoxDecoration(
+                        color: primary,
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(Icons.send, color: Colors.white),
+                    ),
+                  ),
           ],
         ),
       ),
     );
   }
+
+  // -------------------------------------------------------------------------
+  // MENÚ DE ADJUNTOS ESTILO WHATSAPP
+  // -------------------------------------------------------------------------
+  void _openAttachmentMenu() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (_) {
+        return SizedBox(
+          height: 220,
+          child: GridView.count(
+            crossAxisCount: 3,
+            children: [
+              _attachmentButton(
+                icon: Icons.photo,
+                color: Colors.purple,
+                label: "Galería",
+                onTap: () {
+                  Navigator.pop(context);
+                  _pickImage(ImageSource.gallery);
+                },
+              ),
+              _attachmentButton(
+                icon: Icons.camera_alt,
+                color: Colors.teal,
+                label: "Cámara",
+                onTap: () {
+                  Navigator.pop(context);
+                  _pickImage(ImageSource.camera);
+                },
+              ),
+              _attachmentButton(
+                icon: Icons.videocam,
+                color: Colors.red,
+                label: "Video",
+                onTap: () {
+                  Navigator.pop(context);
+                  _unimplemented("Videos (pronto)");
+                },
+              ),
+              _attachmentButton(
+                icon: Icons.mic,
+                color: Colors.orange,
+                label: "Audio",
+                onTap: () {
+                  Navigator.pop(context);
+                  _unimplemented("Audio WA (pronto)");
+                },
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _attachmentButton({
+    required IconData icon,
+    required Color color,
+    required String label,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          CircleAvatar(
+            radius: 28,
+            backgroundColor: color.withOpacity(0.15),
+            child: Icon(icon, color: color, size: 30),
+          ),
+          const SizedBox(height: 6),
+          Text(label, style: const TextStyle(fontSize: 13)),
+        ],
+      ),
+    );
+  }
+
+  // -------------------------------------------------------------------------
+  // OPCIONES AL MANTENER PRESIONADO MENSAJE
+  // -------------------------------------------------------------------------
+  void _showMessageActions(Message message) {
+    showModalBottomSheet(
+      context: context,
+      builder: (_) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const SizedBox(height: 12),
+              const Text("Acciones", style: TextStyle(fontWeight: FontWeight.bold)),
+              const SizedBox(height: 12),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  _reactionButton("❤️"),
+                  _reactionButton("😂"),
+                  _reactionButton("👍"),
+                  _reactionButton("🔥"),
+                ],
+              ),
+              const Divider(),
+              ListTile(
+                leading: const Icon(Icons.delete_outline),
+                title: const Text("Eliminar mensaje"),
+                onTap: () {
+                  Navigator.pop(context);
+                  _unimplemented("Eliminar mensaje (pronto)");
+                },
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _reactionButton(String emoji) {
+    return GestureDetector(
+      onTap: () {
+        Navigator.pop(context);
+        _unimplemented("Reacción $emoji (pronto)");
+      },
+      child: Text(emoji, style: const TextStyle(fontSize: 26)),
+    );
+  }
+
+  void _showError(String msg) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+  }
 }
 
-// ----------------------------------------------------------------------
-// BURBUJA DE MENSAJE (la tuya con mejoras)
-// ----------------------------------------------------------------------
+// -------------------------------------------------------------------------
+// BURBUJA WHATSAPP MORADA — FINAL
+// -------------------------------------------------------------------------
 class MessageBubble extends StatelessWidget {
   final Message message;
-  final bool isCurrentUser;
+  final bool isMe;
 
   const MessageBubble({
     Key? key,
     required this.message,
-    required this.isCurrentUser,
+    required this.isMe,
   }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    final hasImage =
-        message.imageUrls != null && message.imageUrls!.isNotEmpty;
+    final hasImage = message.imageUrls != null && message.imageUrls!.isNotEmpty;
+
+    final bubbleColor =
+        isMe ? const Color(0xFF7A5AF8) : const Color(0xFFF0F0F0);
+
+    final borderRadius = BorderRadius.only(
+      topLeft: const Radius.circular(16),
+      topRight: const Radius.circular(16),
+      bottomLeft: isMe ? const Radius.circular(16) : const Radius.circular(4),
+      bottomRight: isMe ? const Radius.circular(4) : const Radius.circular(16),
+    );
 
     return Align(
-      alignment: isCurrentUser ? Alignment.centerRight : Alignment.centerLeft,
+      alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
       child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+        margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         padding: const EdgeInsets.all(10),
         decoration: BoxDecoration(
-          color: isCurrentUser ? const Color(0xFF00BCD4) : Colors.grey[200],
-          borderRadius: BorderRadius.circular(12),
+          color: bubbleColor,
+          borderRadius: borderRadius,
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            if (!isCurrentUser)
-              Text(
-                message.senderName,
-                style: const TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-
             if (hasImage)
-              Padding(
-                padding: const EdgeInsets.only(top: 6),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(10),
-                  child: Image.network(
-                    message.imageUrls!.first,
-                    width: 220,
-                    height: 220,
-                    fit: BoxFit.cover,
-                  ),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: Image.network(
+                  message.imageUrls!.first,
+                  width: 240,
+                  fit: BoxFit.cover,
                 ),
               ),
-
             if (!hasImage)
               Text(
                 message.content,
                 style: TextStyle(
-                  color: isCurrentUser ? Colors.white : Colors.black,
-                  fontSize: 14,
+                  color: isMe ? Colors.white : Colors.black87,
+                  fontSize: 15,
                 ),
               ),
-
             const SizedBox(height: 4),
-
             Row(
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  "${message.timestamp.hour}:${message.timestamp.minute.toString().padLeft(2, '0')}",
+                  _time(message.timestamp),
                   style: TextStyle(
-                    color: isCurrentUser ? Colors.white70 : Colors.grey,
-                    fontSize: 10,
+                    fontSize: 11,
+                    color: isMe ? Colors.white70 : Colors.black54,
                   ),
                 ),
-                const SizedBox(width: 4),
-                if (isCurrentUser)
+                if (isMe) ...[
+                  const SizedBox(width: 4),
                   Icon(
                     message.isRead ? Icons.done_all : Icons.done,
-                    size: 14,
-                    color: message.isRead ? Colors.blue[200] : Colors.white70,
+                    size: 16,
+                    color: message.isRead
+                        ? Colors.lightBlueAccent
+                        : Colors.white70,
                   ),
+                ],
               ],
             ),
           ],
         ),
       ),
     );
+  }
+
+  String _time(DateTime dt) {
+    return "${dt.hour}:${dt.minute.toString().padLeft(2, '0')}";
   }
 }

@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
-import 'phone_verification_screen.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -10,10 +9,13 @@ class RegisterScreen extends StatefulWidget {
 }
 
 class _RegisterScreenState extends State<RegisterScreen> {
+  static const Color primary = Color(0xFF7A5AF8); // Morado PixelChat
+
   final _usernameController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
   final _authService = AuthService();
+
   bool _isLoading = false;
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
@@ -26,200 +28,169 @@ class _RegisterScreenState extends State<RegisterScreen> {
     super.dispose();
   }
 
+  // ---------------------------------------------------------------------------
+  // REGISTRO
+  // ---------------------------------------------------------------------------
   Future<void> _register() async {
-    if (_usernameController.text.isEmpty ||
-        _passwordController.text.isEmpty ||
-        _confirmPasswordController.text.isEmpty) {
-      _showErrorDialog('Por favor completa todos los campos');
-      return;
+    final username = _usernameController.text.trim();
+    final pass = _passwordController.text.trim();
+    final confirm = _confirmPasswordController.text.trim();
+
+    if (username.isEmpty || pass.isEmpty || confirm.isEmpty) {
+      return _showError("Completa todos los campos.");
     }
 
-    if (_passwordController.text != _confirmPasswordController.text) {
-      _showErrorDialog('Las contraseñas no coinciden');
-      return;
-    }
+    if (pass != confirm) return _showError("Las contraseñas no coinciden.");
+    if (pass.length < 6) return _showError("La contraseña debe tener mínimo 6 caracteres.");
 
-    if (_passwordController.text.length < 6) {
-      _showErrorDialog('La contraseña debe tener al menos 6 caracteres');
-      return;
-    }
-
-    setState(() {
-      _isLoading = true;
-    });
+    setState(() => _isLoading = true);
 
     try {
-      // Usar el username como email temporal (será actualizado después)
-      final email = '${_usernameController.text.toLowerCase()}@pixelchat.local';
+      final email = '${username.toLowerCase()}@pixelchat.local';
 
       await _authService.registerUser(
-        username: _usernameController.text.trim(),
+        username: username,
         email: email,
-        password: _passwordController.text,
+        password: pass,
       );
 
-      if (mounted) {
-        // Navegar a la pantalla de verificación de teléfono
-        Navigator.of(context).pushReplacementNamed('/phone-verification');
-      }
+      if (!mounted) return;
+
+      Navigator.pushReplacementNamed(context, '/phone-verification');
     } catch (e) {
-      if (mounted) {
-        _showErrorDialog(e.toString().replaceFirst('Exception: ', ''));
-      }
+      _showError(e.toString().replaceFirst("Exception: ", ""));
     } finally {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-      }
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
-  void _showErrorDialog(String message) {
+  // ---------------------------------------------------------------------------
+  void _showError(String message) {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Error'),
+      builder: (_) => AlertDialog(
+        title: const Text("Error"),
         content: Text(message),
         actions: [
           TextButton(
+            child: Text("OK", style: TextStyle(color: primary)),
             onPressed: () => Navigator.pop(context),
-            child: const Text('OK'),
           ),
         ],
       ),
     );
   }
 
+  // ---------------------------------------------------------------------------
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
-      body: SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.all(24.0),
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const SizedBox(height: 40),
+              const SizedBox(height: 16),
+
               // Botón atrás
               GestureDetector(
                 onTap: () => Navigator.pop(context),
                 child: const Icon(Icons.arrow_back, color: Colors.black),
               ),
+
               const SizedBox(height: 32),
+
               // Título
               const Text(
-                'Crear una cuenta',
+                "Crear una cuenta",
                 style: TextStyle(
                   fontSize: 28,
-                  fontWeight: FontWeight.bold,
+                  fontWeight: FontWeight.w700,
                   color: Colors.black,
                 ),
               ),
-              const SizedBox(height: 32),
-              // Campo de usuario
-              TextField(
+
+              const SizedBox(height: 28),
+
+              // USERNAME
+              _inputField(
                 controller: _usernameController,
-                decoration: InputDecoration(
-                  hintText: 'Usuario',
-                  hintStyle: const TextStyle(color: Colors.grey),
-                  filled: true,
-                  fillColor: Colors.grey[100],
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide.none,
-                  ),
-                ),
+                hint: "Usuario",
+                icon: Icons.person_outline,
               ),
+
               const SizedBox(height: 16),
-              // Campo de contraseña
-              TextField(
+
+              // PASSWORD
+              _inputField(
                 controller: _passwordController,
-                obscureText: _obscurePassword,
-                decoration: InputDecoration(
-                  hintText: 'Contraseña',
-                  hintStyle: const TextStyle(color: Colors.grey),
-                  filled: true,
-                  fillColor: Colors.grey[100],
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide.none,
-                  ),
-                  suffixIcon: GestureDetector(
-                    onTap: () {
-                      setState(() {
-                        _obscurePassword = !_obscurePassword;
-                      });
-                    },
-                    child: Icon(
-                      _obscurePassword ? Icons.visibility_off : Icons.visibility,
-                      color: Colors.grey,
-                    ),
-                  ),
-                ),
+                hint: "Contraseña",
+                icon: Icons.lock_outline,
+                obscure: _obscurePassword,
+                toggleVisibility: () {
+                  setState(() => _obscurePassword = !_obscurePassword);
+                },
               ),
+
               const SizedBox(height: 16),
-              // Campo de confirmar contraseña
-              TextField(
+
+              // CONFIRM PASSWORD
+              _inputField(
                 controller: _confirmPasswordController,
-                obscureText: _obscureConfirmPassword,
-                decoration: InputDecoration(
-                  hintText: 'Confirmar contraseña',
-                  hintStyle: const TextStyle(color: Colors.grey),
-                  filled: true,
-                  fillColor: Colors.grey[100],
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide.none,
-                  ),
-                  suffixIcon: GestureDetector(
-                    onTap: () {
-                      setState(() {
-                        _obscureConfirmPassword = !_obscureConfirmPassword;
-                      });
-                    },
-                    child: Icon(
-                      _obscureConfirmPassword
-                          ? Icons.visibility_off
-                          : Icons.visibility,
-                      color: Colors.grey,
-                    ),
-                  ),
-                ),
+                hint: "Confirmar contraseña",
+                icon: Icons.lock_outline,
+                obscure: _obscureConfirmPassword,
+                toggleVisibility: () {
+                  setState(() => _obscureConfirmPassword = !_obscureConfirmPassword);
+                },
               ),
+
               const SizedBox(height: 32),
-              // Botón de registro
+
+              // BOTÓN REGISTRARSE
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
                   onPressed: _isLoading ? null : _register,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: primary,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
                   child: _isLoading
                       ? const SizedBox(
-                          height: 20,
-                          width: 20,
+                          width: 22,
+                          height: 22,
                           child: CircularProgressIndicator(
+                            color: Colors.white,
                             strokeWidth: 2,
-                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                           ),
                         )
-                      : const Text('Continuar'),
+                      : const Text(
+                          "Continuar",
+                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                        ),
                 ),
               ),
-              const SizedBox(height: 16),
-              // Enlace a login
+
+              const SizedBox(height: 20),
+
+              // YA TIENES CUENTA?
               Center(
                 child: GestureDetector(
                   onTap: () => Navigator.pop(context),
                   child: RichText(
-                    text: const TextSpan(
+                    text: TextSpan(
                       text: '¿Ya tienes cuenta? ',
-                      style: TextStyle(color: Colors.black),
+                      style: const TextStyle(color: Colors.black),
                       children: [
                         TextSpan(
                           text: 'Inicia sesión',
                           style: TextStyle(
-                            color: Color(0xFF00BCD4),
+                            color: primary,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
@@ -228,8 +199,46 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   ),
                 ),
               ),
+
+              const SizedBox(height: 20),
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // WIDGET REUTILIZABLE INPUT
+  // ---------------------------------------------------------------------------
+  Widget _inputField({
+    required TextEditingController controller,
+    required String hint,
+    required IconData icon,
+    bool obscure = false,
+    VoidCallback? toggleVisibility,
+  }) {
+    return TextField(
+      controller: controller,
+      obscureText: obscure,
+      decoration: InputDecoration(
+        filled: true,
+        fillColor: Colors.grey[100],
+        prefixIcon: Icon(icon, color: Colors.grey[700]),
+        suffixIcon: toggleVisibility == null
+            ? null
+            : GestureDetector(
+                onTap: toggleVisibility,
+                child: Icon(
+                  obscure ? Icons.visibility_off : Icons.visibility,
+                  color: Colors.grey[600],
+                ),
+              ),
+        hintText: hint,
+        hintStyle: TextStyle(color: Colors.grey[600]),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide.none,
         ),
       ),
     );

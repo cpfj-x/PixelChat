@@ -3,18 +3,16 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/user_model.dart';
 
 class AuthService {
-  final firebase_auth.FirebaseAuth _firebaseAuth =
-      firebase_auth.FirebaseAuth.instance;
+  final firebase_auth.FirebaseAuth _auth = firebase_auth.FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  // Stream de cambios de autenticación
-  Stream<firebase_auth.User?> get authStateChanges =>
-      _firebaseAuth.authStateChanges();
+  // ================= GETTERS BÁSICOS =================
 
-  // Obtener usuario actual
-  firebase_auth.User? get currentUser => _firebaseAuth.currentUser;
+  firebase_auth.User? get currentUser => _auth.currentUser;
+  Stream<firebase_auth.User?> get authStateChanges => _auth.authStateChanges();
 
-  // Registrar nuevo usuario
+  // ================= REGISTER =================
+
   Future<User?> registerUser({
     required String username,
     required String email,
@@ -26,6 +24,7 @@ class AuthService {
       final usernameQuery = await _firestore
           .collection('users')
           .where('username', isEqualTo: username)
+          .limit(1)
           .get();
 
       if (usernameQuery.docs.isNotEmpty) {
@@ -33,17 +32,15 @@ class AuthService {
       }
 
       // Crear usuario en Firebase Auth
-      final userCredential = await _firebaseAuth.createUserWithEmailAndPassword(
-        email: email,
-        password: password,
-      );
+      final userCredential =
+          await _auth.createUserWithEmailAndPassword(email: email, password: password);
 
       final firebaseUser = userCredential.user;
       if (firebaseUser == null) {
         throw Exception('Error al crear usuario');
       }
 
-      // Crear documento de usuario en Firestore
+      // Crear documento en Firestore
       final user = User(
         uid: firebaseUser.uid,
         username: username,
@@ -54,25 +51,24 @@ class AuthService {
         lastActive: DateTime.now(),
       );
 
-      await _firestore.collection('users').doc(firebaseUser.uid).set(
-            user.toMap(),
-          );
+      await _firestore.collection('users').doc(firebaseUser.uid).set(user.toMap());
 
       return user;
     } on firebase_auth.FirebaseAuthException catch (e) {
-      throw Exception(_getAuthErrorMessage(e.code));
+      throw Exception(_mapAuthError(e.code));
     } catch (e) {
       throw Exception('Error al registrar: $e');
     }
   }
 
-  // Iniciar sesión
+  // ================= LOGIN =================
+
   Future<User?> loginUser({
     required String email,
     required String password,
   }) async {
     try {
-      final userCredential = await _firebaseAuth.signInWithEmailAndPassword(
+      final userCredential = await _auth.signInWithEmailAndPassword(
         email: email,
         password: password,
       );
@@ -82,7 +78,6 @@ class AuthService {
         throw Exception('Error al iniciar sesión');
       }
 
-      // Obtener datos del usuario desde Firestore
       final userDoc =
           await _firestore.collection('users').doc(firebaseUser.uid).get();
 
@@ -90,36 +85,36 @@ class AuthService {
         throw Exception('Datos del usuario no encontrados');
       }
 
-      // Actualizar última actividad
+      // Actualizar lastActive
       await _firestore.collection('users').doc(firebaseUser.uid).update({
         'lastActive': DateTime.now(),
       });
 
       return User.fromMap(userDoc.data() as Map<String, dynamic>);
     } on firebase_auth.FirebaseAuthException catch (e) {
-      throw Exception(_getAuthErrorMessage(e.code));
+      throw Exception(_mapAuthError(e.code));
     } catch (e) {
       throw Exception('Error al iniciar sesión: $e');
     }
   }
 
-  // Cerrar sesión
+  // ================= LOGOUT =================
+
   Future<void> logoutUser() async {
     try {
-      await _firebaseAuth.signOut();
+      await _auth.signOut();
     } catch (e) {
       throw Exception('Error al cerrar sesión: $e');
     }
   }
 
-  // Obtener usuario por ID
+  // ================= QUERIES DE USUARIO =================
+
   Future<User?> getUserById(String uid) async {
     try {
       final userDoc = await _firestore.collection('users').doc(uid).get();
 
-      if (!userDoc.exists) {
-        return null;
-      }
+      if (!userDoc.exists) return null;
 
       return User.fromMap(userDoc.data() as Map<String, dynamic>);
     } catch (e) {
@@ -127,7 +122,6 @@ class AuthService {
     }
   }
 
-  // Obtener usuario por username
   Future<User?> getUserByUsername(String username) async {
     try {
       final query = await _firestore
@@ -136,9 +130,7 @@ class AuthService {
           .limit(1)
           .get();
 
-      if (query.docs.isEmpty) {
-        return null;
-      }
+      if (query.docs.isEmpty) return null;
 
       return User.fromMap(query.docs.first.data());
     } catch (e) {
@@ -146,7 +138,8 @@ class AuthService {
     }
   }
 
-  // Actualizar perfil de usuario
+  // ================= PERFIL =================
+
   Future<void> updateUserProfile({
     required String uid,
     String? bio,
@@ -163,7 +156,8 @@ class AuthService {
     }
   }
 
-  // Habilitar 2FA
+  // ================= 2FA =================
+
   Future<void> enableTwoFactor({
     required String uid,
     required String phoneNumber,
@@ -178,36 +172,35 @@ class AuthService {
     }
   }
 
-  // Cambiar contraseña
+  // ================= CAMBIAR CONTRASEÑA =================
+
   Future<void> changePassword({
     required String currentPassword,
     required String newPassword,
   }) async {
     try {
-      final user = _firebaseAuth.currentUser;
+      final user = _auth.currentUser;
       if (user == null) {
         throw Exception('Usuario no autenticado');
       }
 
-      // Reautenticar usuario
       final credential = firebase_auth.EmailAuthProvider.credential(
         email: user.email!,
         password: currentPassword,
       );
 
       await user.reauthenticateWithCredential(credential);
-
-      // Cambiar contraseña
       await user.updatePassword(newPassword);
     } on firebase_auth.FirebaseAuthException catch (e) {
-      throw Exception(_getAuthErrorMessage(e.code));
+      throw Exception(_mapAuthError(e.code));
     } catch (e) {
       throw Exception('Error al cambiar contraseña: $e');
     }
   }
 
-  // Obtener mensaje de error de autenticación
-  String _getAuthErrorMessage(String code) {
+  // ================= ERRORES =================
+
+  String _mapAuthError(String code) {
     switch (code) {
       case 'weak-password':
         return 'La contraseña es muy débil';

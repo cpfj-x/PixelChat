@@ -1,3 +1,5 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 class Message {
   final String id;
   final String senderId;
@@ -23,10 +25,8 @@ class Message {
     this.replyToMessageId,
   });
 
-  // Convertir a Map para Firestore
   Map<String, dynamic> toMap() {
     return {
-      'id': id,
       'senderId': senderId,
       'senderName': senderName,
       'senderImageUrl': senderImageUrl,
@@ -39,7 +39,6 @@ class Message {
     };
   }
 
-  // Crear desde Firestore
   factory Message.fromMap(Map<String, dynamic> map, String docId) {
     return Message(
       id: docId,
@@ -47,38 +46,20 @@ class Message {
       senderName: map['senderName'] ?? '',
       senderImageUrl: map['senderImageUrl'],
       content: map['content'] ?? '',
-      imageUrls: List<String>.from(map['imageUrls'] ?? []),
-      timestamp: map['timestamp']?.toDate() ?? DateTime.now(),
+      imageUrls: map['imageUrls'] != null
+          ? List<String>.from(map['imageUrls'])
+          : null,
+      timestamp: _toDate(map['timestamp']),
       chatId: map['chatId'] ?? '',
       isRead: map['isRead'] ?? false,
       replyToMessageId: map['replyToMessageId'],
     );
   }
 
-  // Copiar con cambios
-  Message copyWith({
-    String? id,
-    String? senderId,
-    String? senderName,
-    String? senderImageUrl,
-    String? content,
-    List<String>? imageUrls,
-    DateTime? timestamp,
-    String? chatId,
-    bool? isRead,
-    String? replyToMessageId,
-  }) {
-    return Message(
-      id: id ?? this.id,
-      senderId: senderId ?? this.senderId,
-      senderName: senderName ?? this.senderName,
-      senderImageUrl: senderImageUrl ?? this.senderImageUrl,
-      content: content ?? this.content,
-      imageUrls: imageUrls ?? this.imageUrls,
-      timestamp: timestamp ?? this.timestamp,
-      chatId: chatId ?? this.chatId,
-      isRead: isRead ?? this.isRead,
-      replyToMessageId: replyToMessageId ?? this.replyToMessageId,
-    );
+  static DateTime _toDate(dynamic v) {
+    if (v == null) return DateTime.now();
+    if (v is DateTime) return v;
+    if (v is Timestamp) return v.toDate();
+    return DateTime.now();
   }
 }

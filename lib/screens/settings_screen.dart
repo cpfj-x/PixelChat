@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+
 import '../services/auth_service.dart';
 import '../models/user_model.dart' as app_user;
+
 import 'account_settings_screen.dart';
 import 'chat_settings_screen.dart';
 import 'appearance_settings_screen.dart';
@@ -9,7 +11,6 @@ import 'notifications_settings_screen.dart';
 import 'privacy_settings_screen.dart';
 import 'data_usage_settings_screen.dart';
 import 'help_screen.dart';
-
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -22,6 +23,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
   final _authService = AuthService();
   app_user.User? _currentUserData;
 
+  static const Color primary = Color(0xFF7A5AF8); // PixelChat Purple
+
   @override
   void initState() {
     super.initState();
@@ -32,194 +35,256 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final firebaseUser = FirebaseAuth.instance.currentUser;
     if (firebaseUser != null) {
       final userData = await _authService.getUserById(firebaseUser.uid);
-      setState(() {
-        _currentUserData = userData;
-      });
+      setState(() => _currentUserData = userData);
     }
   }
 
   void _logout() {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Cerrar sesión'),
-        content: const Text('¿Estás seguro de que deseas cerrar sesión?'),
+      builder: (_) => AlertDialog(
+        title: const Text("Cerrar sesión"),
+        content: const Text("¿Deseas cerrar sesión?"),
         actions: [
           TextButton(
+            child: const Text("Cancelar"),
             onPressed: () => Navigator.pop(context),
-            child: const Text('Cancelar'),
           ),
           TextButton(
+            child: const Text("Cerrar sesión"),
             onPressed: () async {
               await _authService.logoutUser();
-              if (mounted) {
-                Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
-              }
+              if (!mounted) return;
+              Navigator.of(context).pushNamedAndRemoveUntil("/login", (r) => false);
             },
-            child: const Text('Cerrar sesión'),
           ),
         ],
       ),
     );
   }
 
+  // ------------------------------------------------------------
+  //                        UI
+  // ------------------------------------------------------------
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Configuración'),
+        backgroundColor: primary,
         elevation: 0,
+        title: const Text(
+          "Configuración",
+          style: TextStyle(fontWeight: FontWeight.w600),
+        ),
       ),
-      body: SingleChildScrollView(
-        child: Column(
-          children: [
-            // Sección de Perfil
-            Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Row(
-                children: [
-                  CircleAvatar(
-                    radius: 30,
-                    backgroundColor: const Color(0xFF00BCD4),
-                    child: Text(
-                      _currentUserData?.username[0].toUpperCase() ?? '?',
-                      style: const TextStyle(color: Colors.white, fontSize: 24),
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        _currentUserData?.username ?? 'Cargando...',
-                        style: const TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      Text(
-                        _currentUserData?.email ?? '',
-                        style: const TextStyle(
-                          fontSize: 14,
-                          color: Colors.grey,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
+
+      body: ListView(
+        children: [
+          const SizedBox(height: 12),
+
+          // ------------------------------------------------------------
+          //                        HEADER PERFIL
+          // ------------------------------------------------------------
+          _buildProfileSection(),
+
+          const SizedBox(height: 12),
+          _sectionTitle("Cuenta"),
+
+          _settingsTile(
+            icon: Icons.account_circle_outlined,
+            title: "Cuenta",
+            subtitle: "Privacidad, seguridad, cambiar número",
+            onTap: () => _push(const AccountSettingsScreen()),
+          ),
+
+          _divider(),
+
+          _settingsTile(
+            icon: Icons.lock_outline,
+            title: "Privacidad",
+            subtitle: "Bloqueo pantalla, contactos bloqueados",
+            onTap: () => _push(const PrivacySettingsScreen()),
+          ),
+
+          _settingsTile(
+            icon: Icons.chat_bubble_outline,
+            title: "Chats",
+            subtitle: "Tema, historial, fondos",
+            onTap: () => _push(const ChatSettingsScreen()),
+          ),
+
+          _divider(),
+
+          _settingsTile(
+            icon: Icons.palette_outlined,
+            title: "Apariencia",
+            subtitle: "Tema claro/oscuro, fuente",
+            onTap: () => _push(const AppearanceSettingsScreen()),
+          ),
+
+          _settingsTile(
+            icon: Icons.notifications_outlined,
+            title: "Notificaciones",
+            subtitle: "Mensajes, grupos, tonos",
+            onTap: () => _push(const NotificationsSettingsScreen()),
+          ),
+
+          _settingsTile(
+            icon: Icons.data_usage_outlined,
+            title: "Uso de datos",
+            subtitle: "Descargas automáticas, red",
+            onTap: () => _push(const DataUsageSettingsScreen()),
+          ),
+
+          const SizedBox(height: 16),
+          _sectionTitle("Soporte"),
+
+          _settingsTile(
+            icon: Icons.help_outline,
+            title: "Ayuda",
+            subtitle: "Preguntas frecuentes, contacto",
+            onTap: () => _push(const HelpScreen()),
+          ),
+
+          _divider(),
+
+          _settingsTile(
+            icon: Icons.person_add_alt_1_outlined,
+            title: "Invitar amigos",
+            onTap: () => _showInviteDialog(context),
+          ),
+
+          const SizedBox(height: 30),
+
+          // Cerrar sesión
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: TextButton.icon(
+              onPressed: _logout,
+              icon: const Icon(Icons.logout, color: Colors.redAccent),
+              label: const Text(
+                "Cerrar sesión",
+                style: TextStyle(
+                  color: Colors.redAccent,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ),
-            const Divider(),
-            // Opciones de Configuración
-              ListTile(
-              leading: const Icon(Icons.account_circle_outlined),
-              title: const Text('Cuenta'),
-              subtitle: const Text('Privacidad, seguridad, cambiar número'),
-              onTap: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (_) => const AccountSettingsScreen(),
-                  ),
-                );
-              },
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ------------------------------------------------------------
+  //                    COMPONENTES
+  // ------------------------------------------------------------
+
+  Widget _buildProfileSection() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
+      color: primary.withOpacity(0.10),
+      child: Row(
+        children: [
+          CircleAvatar(
+            radius: 34,
+            backgroundColor: primary,
+            child: Text(
+              _currentUserData?.username[0].toUpperCase() ?? "?",
+              style: const TextStyle(fontSize: 28, color: Colors.white),
             ),
-            ListTile(
-              leading: const Icon(Icons.chat_bubble_outline),
-              title: const Text('Chats'),
-              subtitle: const Text('Historial de chats, tema, fondo de pantalla'),
-              onTap: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (_) => const ChatSettingsScreen(),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  _currentUserData?.username ?? "Cargando...",
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
                   ),
-                );
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.palette_outlined),
-              title: const Text('Apariencia'),
-              subtitle: const Text('Tema, tamaño de fuente'),
-              onTap: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (_) => const AppearanceSettingsScreen(),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  _currentUserData?.email ?? "—",
+                  style: TextStyle(
+                    color: Colors.grey.shade700,
+                    fontSize: 14,
                   ),
-                );
-              },
+                )
+              ],
             ),
-            ListTile(
-              leading: const Icon(Icons.notifications_outlined),
-              title: const Text('Notificaciones'),
-              subtitle: const Text('Mensajes, grupos, llamadas'),
-              onTap: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (_) => const NotificationsSettingsScreen(),
-                  ),
-                );
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.lock_outline),
-              title: const Text('Privacidad'),
-              subtitle: const Text('Bloqueo de pantalla, doble autentificación'),
-              onTap: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (_) => const PrivacySettingsScreen(),
-                  ),
-                );
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.data_usage_outlined),
-              title: const Text('Uso de datos'),
-              subtitle: const Text('Descarga automática, uso de red'),
-              onTap: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (_) => const DataUsageSettingsScreen(),
-                  ),
-                );
-              },
-            ),
-            const Divider(),
-            ListTile(
-              leading: const Icon(Icons.help_outline),
-              title: const Text('Ayuda'),
-              subtitle: const Text('Centro de ayuda, contáctanos'),
-              onTap: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (_) => const HelpScreen(),
-                  ),
-                );
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.person_add_alt_1_outlined),
-              title: const Text('Invita a tus amigos'),
-              onTap: () {
-                showDialog(
-                  context: context,
-                  builder: (_) => AlertDialog(
-                    title: const Text('Invita a tus amigos'),
-                    content: const Text(
-                      'Comparte este enlace para invitar a tus amigos:\n\n'
-                      'https://pixelchat.local/invite',
-                    ),
-                    actions: [
-                      TextButton(
-                        onPressed: () => Navigator.pop(context),
-                        child: const Text('Cerrar'),
-                      ),
-                    ],
-                  ),
-                );
-              },
-            ),
-          ],
+          ),
+          Icon(Icons.qr_code_2, size: 28, color: primary),
+        ],
+      ),
+    );
+  }
+
+  Widget _settingsTile({
+    required IconData icon,
+    required String title,
+    String? subtitle,
+    VoidCallback? onTap,
+  }) {
+    return ListTile(
+      leading: CircleAvatar(
+        radius: 20,
+        backgroundColor: primary.withOpacity(0.12),
+        child: Icon(icon, color: primary, size: 22),
+      ),
+      title: Text(title, style: const TextStyle(fontSize: 16)),
+      subtitle: subtitle != null
+          ? Text(subtitle, style: const TextStyle(fontSize: 12))
+          : null,
+      trailing: const Icon(Icons.chevron_right, color: Colors.grey),
+      onTap: onTap,
+    );
+  }
+
+  Widget _divider() {
+    return Padding(
+      padding: const EdgeInsets.only(left: 72),
+      child: Divider(height: 0, color: Colors.grey.shade300),
+    );
+  }
+
+  Widget _sectionTitle(String title) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 10, 16, 6),
+      child: Text(
+        title.toUpperCase(),
+        style: TextStyle(
+          fontSize: 12,
+          color: Colors.grey.shade600,
+          fontWeight: FontWeight.w600,
         ),
+      ),
+    );
+  }
+
+  void _push(Widget screen) {
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => screen),
+    );
+  }
+
+  void _showInviteDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text("Invita a tus amigos"),
+        content: const Text(
+            "Comparte este enlace para invitar a tus amigos:\n\n"
+            "https://pixelchat.local/invite"),
+        actions: [
+          TextButton(
+            child: const Text("Cerrar"),
+            onPressed: () => Navigator.pop(context),
+          )
+        ],
       ),
     );
   }

@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+
 import '../services/chat_service.dart';
-import '../models/user_model.dart' as app_user;
 import '../models/chat_model.dart';
 import 'chat_detail_screen.dart';
 
 class NewGroupScreen extends StatefulWidget {
-  final String chatType; // 'group' or 'community'
+  final String chatType; // 'group' o 'community'
 
   const NewGroupScreen({
     super.key,
@@ -18,12 +18,13 @@ class NewGroupScreen extends StatefulWidget {
 }
 
 class _NewGroupScreenState extends State<NewGroupScreen> {
+  static const Color primary = Color(0xFF7A5AF8);
+
   final _nameController = TextEditingController();
   final _descriptionController = TextEditingController();
   final _chatService = ChatService();
   final _currentUser = FirebaseAuth.instance.currentUser;
-  final List<app_user.User> _allUsers = []; // Asumimos que ya se cargaron en NewChatScreen
-  final List<app_user.User> _selectedMembers = [];
+
   bool _isLoading = false;
 
   @override
@@ -33,128 +34,162 @@ class _NewGroupScreenState extends State<NewGroupScreen> {
     super.dispose();
   }
 
-  // Nota: Para simplificar, esta pantalla no cargará la lista de usuarios.
-  // En una aplicación real, se usaría un selector de miembros.
-  // Aquí, solo implementaremos la creación del chat.
-
+  // ---------------------------------------------------------------------------
+  // CREAR GRUPO / COMUNIDAD
+  // ---------------------------------------------------------------------------
   Future<void> _createChat() async {
-    if (_nameController.text.trim().isEmpty) {
-      _showErrorDialog('El nombre del ${widget.chatType} es obligatorio.');
+    final name = _nameController.text.trim();
+    final desc = _descriptionController.text.trim();
+
+    if (name.isEmpty) {
+      _showErrorDialog("El nombre no puede estar vacío.");
       return;
     }
 
     if (_currentUser == null) return;
 
-    setState(() {
-      _isLoading = true;
-    });
+    setState(() => _isLoading = true);
 
     try {
-      final memberIds = [_currentUser.uid]; // El creador siempre es miembro
-      // Aquí se añadirían los IDs de los miembros seleccionados, si tuviéramos un selector.
+      final memberIds = [_currentUser!.uid];
 
-      Chat chat;
-      if (widget.chatType == 'group') {
+      late Chat chat;
+
+      if (widget.chatType == "group") {
         chat = await _chatService.createGroupChat(
-          groupName: _nameController.text.trim(),
-          createdBy: _currentUser.uid,
+          groupName: name,
+          createdBy: _currentUser!.uid,
           memberIds: memberIds,
-          description: _descriptionController.text.trim(),
+          description: desc.isNotEmpty ? desc : null,
         );
       } else {
         chat = await _chatService.createCommunity(
-          communityName: _nameController.text.trim(),
-          createdBy: _currentUser.uid,
+          communityName: name,
+          createdBy: _currentUser!.uid,
           memberIds: memberIds,
-          description: _descriptionController.text.trim(),
+          description: desc.isNotEmpty ? desc : null,
         );
       }
 
-      if (mounted) {
-        // Navegar a la pantalla de chat
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(
-            builder: (context) => ChatDetailScreen(chat: chat),
-          ),
-        );
-      }
+      if (!mounted) return;
+
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (_) => ChatDetailScreen(chat: chat),
+        ),
+      );
     } catch (e) {
-      if (mounted) {
-        _showErrorDialog('Error al crear ${widget.chatType}: ${e.toString().replaceFirst('Exception: ', '')}');
-      }
+      _showErrorDialog("Error al crear ${widget.chatType}: $e");
     } finally {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-      }
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
+  // ---------------------------------------------------------------------------
   void _showErrorDialog(String message) {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Error'),
+      builder: (_) => AlertDialog(
+        title: const Text("Error"),
         content: Text(message),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('OK'),
+            child: const Text("OK"),
           ),
         ],
       ),
     );
   }
 
+  // ---------------------------------------------------------------------------
   @override
   Widget build(BuildContext context) {
-    final title = widget.chatType == 'group' ? 'Nuevo Grupo' : 'Nueva Comunidad';
+    final isGroup = widget.chatType == "group";
+    final title = isGroup ? "Nuevo Grupo" : "Nueva Comunidad";
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(title),
+        backgroundColor: primary,
         elevation: 0,
+        title: Text(
+          title,
+          style: const TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
       ),
+
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
+        padding: const EdgeInsets.all(20),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Campo de Nombre
+            // ------------------ NOMBRE ------------------
             TextField(
               controller: _nameController,
               decoration: InputDecoration(
-                labelText: 'Nombre del $title',
-                border: const OutlineInputBorder(),
+                labelText: "Nombre del ${isGroup ? 'grupo' : 'comunidad'}",
+                prefixIcon: Icon(
+                  isGroup ? Icons.group_outlined : Icons.public_outlined,
+                  color: primary,
+                ),
+                filled: true,
+                fillColor: Colors.grey[100],
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(14),
+                  borderSide: BorderSide.none,
+                ),
               ),
             ),
+
             const SizedBox(height: 16),
-            // Campo de Descripción
+
+            // ------------------ DESCRIPCIÓN ------------------
             TextField(
               controller: _descriptionController,
               maxLines: 3,
-              decoration: const InputDecoration(
-                labelText: 'Descripción (Opcional)',
-                border: OutlineInputBorder(),
+              decoration: InputDecoration(
+                labelText: "Descripción (opcional)",
+                prefixIcon: const Icon(Icons.description_outlined),
+                alignLabelWithHint: true,
+                filled: true,
+                fillColor: Colors.grey[100],
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(14),
+                  borderSide: BorderSide.none,
+                ),
               ),
             ),
+
             const SizedBox(height: 32),
-            // Botón de Creación
+
+            // ------------------ BOTÓN ------------------
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: primary,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                ),
                 onPressed: _isLoading ? null : _createChat,
                 child: _isLoading
                     ? const SizedBox(
                         height: 20,
                         width: 20,
                         child: CircularProgressIndicator(
+                          color: Colors.white,
                           strokeWidth: 2,
-                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                         ),
                       )
-                    : Text('Crear $title'),
+                    : Text(
+                        "Crear ${isGroup ? 'Grupo' : 'Comunidad'}",
+                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                      ),
               ),
             ),
           ],

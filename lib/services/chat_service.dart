@@ -1,3 +1,4 @@
+// lib/services/chat_service.dart
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/chat_model.dart';
 import '../models/message_model.dart';
@@ -5,7 +6,9 @@ import '../models/message_model.dart';
 class ChatService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  // Crear chat directo
+  // ---------------------------------------------------------------------------
+  // CREAR CHAT DIRECTO (1 a 1)
+  // ---------------------------------------------------------------------------
   Future<Chat> createDirectChat({
     required String userId1,
     required String userId2,
@@ -13,18 +16,16 @@ class ChatService {
     required String user2Name,
   }) async {
     try {
-      // Crear ID único para el chat (ordenar IDs para consistencia)
-      final ids = [userId1, userId2];
-      ids.sort();
+      // Crear ID único ordenando los IDs
+      final ids = [userId1, userId2]..sort();
       final chatId = '${ids[0]}_${ids[1]}';
 
-      // Verificar si el chat ya existe
-      final existingChat = await _firestore.collection('chats').doc(chatId).get();
-      if (existingChat.exists) {
-        return Chat.fromMap(existingChat.data() as Map<String, dynamic>, chatId);
+      // Verificar si ya existe
+      final existing = await _firestore.collection('chats').doc(chatId).get();
+      if (existing.exists) {
+        return Chat.fromMap(existing.data() as Map<String, dynamic>, chatId);
       }
 
-      // Crear nuevo chat
       final chat = Chat(
         id: chatId,
         name: userId1 == userId2 ? user1Name : user2Name,
@@ -37,14 +38,15 @@ class ChatService {
       );
 
       await _firestore.collection('chats').doc(chatId).set(chat.toMap());
-
       return chat;
     } catch (e) {
-      throw Exception('Error al crear chat: $e');
+      throw Exception('Error al crear chat directo: $e');
     }
   }
 
-  // Crear chat grupal
+  // ---------------------------------------------------------------------------
+  // CREAR GRUPO
+  // ---------------------------------------------------------------------------
   Future<Chat> createGroupChat({
     required String groupName,
     required String createdBy,
@@ -69,14 +71,15 @@ class ChatService {
       );
 
       await chatRef.set(chat.toMap());
-
       return chat;
     } catch (e) {
       throw Exception('Error al crear grupo: $e');
     }
   }
 
-  // Crear comunidad
+  // ---------------------------------------------------------------------------
+  // CREAR COMUNIDAD
+  // ---------------------------------------------------------------------------
   Future<Chat> createCommunity({
     required String communityName,
     required String createdBy,
@@ -101,19 +104,19 @@ class ChatService {
       );
 
       await chatRef.set(chat.toMap());
-
       return chat;
     } catch (e) {
       throw Exception('Error al crear comunidad: $e');
     }
   }
 
-  // Obtener chats del usuario
+  // ---------------------------------------------------------------------------
+  // OBTENER CHATS DEL USUARIO
+  // ---------------------------------------------------------------------------
   Stream<List<Chat>> getUserChats(String userId) {
     return _firestore
         .collection('chats')
         .where('memberIds', arrayContains: userId)
-
         .snapshots()
         .map((snapshot) {
       return snapshot.docs
@@ -122,22 +125,22 @@ class ChatService {
     });
   }
 
-  // Obtener chat por ID
+  // ---------------------------------------------------------------------------
+  // OBTENER CHAT POR ID
+  // ---------------------------------------------------------------------------
   Future<Chat?> getChatById(String chatId) async {
     try {
       final doc = await _firestore.collection('chats').doc(chatId).get();
-
-      if (!doc.exists) {
-        return null;
-      }
-
+      if (!doc.exists) return null;
       return Chat.fromMap(doc.data() as Map<String, dynamic>, doc.id);
     } catch (e) {
       throw Exception('Error al obtener chat: $e');
     }
   }
 
-  // Agregar miembro al grupo
+  // ---------------------------------------------------------------------------
+  // GESTIÓN DE MIEMBROS
+  // ---------------------------------------------------------------------------
   Future<void> addMemberToChat({
     required String chatId,
     required String userId,
@@ -151,7 +154,6 @@ class ChatService {
     }
   }
 
-  // Remover miembro del grupo
   Future<void> removeMemberFromChat({
     required String chatId,
     required String userId,
@@ -165,7 +167,9 @@ class ChatService {
     }
   }
 
-  // Enviar mensaje
+  // ---------------------------------------------------------------------------
+  // ENVIAR MENSAJE  ✅ (lo que usa ChatDetailScreen)
+  // ---------------------------------------------------------------------------
   Future<Message> sendMessage({
     required String chatId,
     required String senderId,
@@ -175,8 +179,11 @@ class ChatService {
     List<String>? imageUrls,
   }) async {
     try {
-      final messageRef =
-          _firestore.collection('chats').doc(chatId).collection('messages').doc();
+      final messageRef = _firestore
+          .collection('chats')
+          .doc(chatId)
+          .collection('messages')
+          .doc();
 
       final message = Message(
         id: messageRef.id,
@@ -192,7 +199,6 @@ class ChatService {
 
       await messageRef.set(message.toMap());
 
-      // Actualizar último mensaje del chat
       await _firestore.collection('chats').doc(chatId).update({
         'lastMessage': content,
         'lastMessageSenderId': senderId,
@@ -205,7 +211,9 @@ class ChatService {
     }
   }
 
-  // Obtener mensajes del chat
+  // ---------------------------------------------------------------------------
+  // OBTENER MENSAJES DEL CHAT  ✅ (lo que usa ChatDetailScreen)
+  // ---------------------------------------------------------------------------
   Stream<List<Message>> getChatMessages(String chatId) {
     return _firestore
         .collection('chats')
@@ -220,7 +228,9 @@ class ChatService {
     });
   }
 
-  // Marcar mensaje como leído
+  // ---------------------------------------------------------------------------
+  // LEÍDO / ELIMINAR / SILENCIAR / BUSCAR
+  // ---------------------------------------------------------------------------
   Future<void> markMessageAsRead({
     required String chatId,
     required String messageId,
@@ -237,7 +247,6 @@ class ChatService {
     }
   }
 
-  // Eliminar mensaje
   Future<void> deleteMessage({
     required String chatId,
     required String messageId,
@@ -254,7 +263,6 @@ class ChatService {
     }
   }
 
-  // Silenciar/dessilenciar chat
   Future<void> toggleMuteChat({
     required String chatId,
     required bool isMuted,
@@ -268,7 +276,6 @@ class ChatService {
     }
   }
 
-  // Buscar chats por nombre
   Future<List<Chat>> searchChats(String query) async {
     try {
       final snapshot = await _firestore

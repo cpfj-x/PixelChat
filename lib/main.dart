@@ -23,41 +23,52 @@ void main() async {
 class PixelChatApp extends StatelessWidget {
   const PixelChatApp({Key? key}) : super(key: key);
 
+  // Color oficial PixelChat (morado)
+  static const primary = Color(0xFF7A5AF8);
+
   @override
   Widget build(BuildContext context) {
     return Consumer<ThemeProvider>(
-      builder: (context, themeProvider, _) {
+      builder: (_, themeProvider, __) {
         return MaterialApp(
-          title: 'PixelChat',
           debugShowCheckedModeBanner: false,
+          title: "PixelChat",
           initialRoute: AppRoutes.splash,
           routes: AppRoutes.getRoutes(),
           themeMode: themeProvider.themeMode,
 
-          // Tema claro (tu diseño original)
+          // ==========================
+          // 🌤️ TEMA CLARO
+          // ==========================
           theme: ThemeData(
-            brightness: Brightness.light,
             useMaterial3: true,
-            primarySwatch: Colors.cyan,
-            primaryColor: const Color(0xFF00BCD4),
-            fontFamily: 'Roboto',
+            brightness: Brightness.light,
+            colorScheme: ColorScheme.fromSeed(
+              seedColor: primary,
+              brightness: Brightness.light,
+            ),
             scaffoldBackgroundColor: Colors.white,
+
             appBarTheme: const AppBarTheme(
-              backgroundColor: Color(0xFF00BCD4),
+              backgroundColor: primary,
               foregroundColor: Colors.white,
               elevation: 0,
             ),
+
             elevatedButtonTheme: ElevatedButtonThemeData(
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF00BCD4),
+                backgroundColor: primary,
                 foregroundColor: Colors.white,
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 32,
+                  vertical: 16,
+                ),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(30),
+                  borderRadius: BorderRadius.circular(12),
                 ),
               ),
             ),
+
             inputDecorationTheme: InputDecorationTheme(
               filled: true,
               fillColor: Colors.grey[100],
@@ -65,39 +76,46 @@ class PixelChatApp extends StatelessWidget {
                 borderRadius: BorderRadius.circular(12),
                 borderSide: BorderSide.none,
               ),
-              contentPadding:
-                  const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             ),
           ),
 
-          // Tema oscuro AMOLED-ish
+          // ==========================
+          // 🌙 TEMA OSCURO AMOLED
+          // ==========================
           darkTheme: ThemeData(
-            brightness: Brightness.dark,
             useMaterial3: true,
-            scaffoldBackgroundColor: Colors.black,
-            canvasColor: Colors.black,
+            brightness: Brightness.dark,
+
             colorScheme: ColorScheme.fromSeed(
-              seedColor: const Color(0xFF00BCD4),
+              seedColor: primary,
               brightness: Brightness.dark,
               background: Colors.black,
-              surface: const Color(0xFF050505),
+              surface: const Color(0xFF0A0A0A),
             ),
+
+            scaffoldBackgroundColor: Colors.black,
+            canvasColor: Colors.black,
+
             appBarTheme: const AppBarTheme(
               backgroundColor: Colors.black,
               foregroundColor: Colors.white,
               elevation: 0,
             ),
+
             elevatedButtonTheme: ElevatedButtonThemeData(
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF00BCD4),
-                foregroundColor: Colors.black,
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                backgroundColor: primary,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 32,
+                  vertical: 16,
+                ),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(30),
+                  borderRadius: BorderRadius.circular(12),
                 ),
               ),
             ),
+
             inputDecorationTheme: InputDecorationTheme(
               filled: true,
               fillColor: const Color(0xFF111111),
@@ -105,8 +123,6 @@ class PixelChatApp extends StatelessWidget {
                 borderRadius: BorderRadius.circular(12),
                 borderSide: BorderSide.none,
               ),
-              contentPadding:
-                  const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             ),
           ),
         );
