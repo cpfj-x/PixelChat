@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'profile_setup_screen.dart';
 
 class PhoneVerificationScreen extends StatefulWidget {
-  const PhoneVerificationScreen({Key? key}) : super(key: key);
+  const PhoneVerificationScreen({super.key});
 
   @override
   State<PhoneVerificationScreen> createState() =>

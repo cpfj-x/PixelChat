@@ -4,7 +4,7 @@ import 'groups_screen.dart'; // Asumo que existe o la crearé
 import 'settings_screen.dart'; // Asumo que existe o la crearé
 
 class MainScreen extends StatefulWidget {
-  const MainScreen({Key? key}) : super(key: key);
+  const MainScreen({super.key});
 
   @override
   State<MainScreen> createState() => _MainScreenState();

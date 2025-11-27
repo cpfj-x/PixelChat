@@ -274,7 +274,7 @@ class ChatService {
       final snapshot = await _firestore
           .collection('chats')
           .where('name', isGreaterThanOrEqualTo: query)
-          .where('name', isLessThan: query + 'z')
+          .where('name', isLessThan: '${query}z')
           .get();
 
       return snapshot.docs

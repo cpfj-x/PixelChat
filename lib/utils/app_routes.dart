@@ -4,7 +4,6 @@ import '../screens/login_screen.dart';
 import '../screens/register_screen.dart';
 import '../screens/phone_verification_screen.dart';
 import '../screens/profile_setup_screen.dart';
-import '../screens/home_screen.dart';
 import '../screens/main_screen.dart';
 
 class AppRoutes {

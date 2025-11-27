@@ -9,9 +9,9 @@ class NewGroupScreen extends StatefulWidget {
   final String chatType; // 'group' or 'community'
 
   const NewGroupScreen({
-    Key? key,
+    super.key,
     required this.chatType,
-  }) : super(key: key);
+  });
 
   @override
   State<NewGroupScreen> createState() => _NewGroupScreenState();

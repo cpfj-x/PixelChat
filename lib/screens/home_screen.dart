@@ -8,7 +8,7 @@ import 'new_chat_type_screen.dart';
 import 'login_screen.dart';
 
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({Key? key}) : super(key: key);
+  const HomeScreen({super.key});
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -22,11 +22,19 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
-    final userId = _firebaseAuth.currentUser?.uid;
+    final user = FirebaseAuth.instance.currentUser;
+    final userId = user?.uid;
+
     if (userId != null) {
-      _chatsStream = _chatService.getUserChats(userId);
+      // Solo chats directos (sin grupos ni comunidades)
+      _chatsStream = _chatService
+          .getUserChats(userId)
+          .map((chats) => chats
+              .where((chat) => chat.type == ChatType.direct)
+              .toList());
     }
   }
+
 
   void _logout() {
     showDialog(
@@ -143,10 +151,10 @@ class ChatListItem extends StatelessWidget {
   final VoidCallback onTap;
 
   const ChatListItem({
-    Key? key,
+    super.key,
     required this.chat,
     required this.onTap,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

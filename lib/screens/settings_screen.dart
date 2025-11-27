@@ -2,9 +2,17 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../services/auth_service.dart';
 import '../models/user_model.dart' as app_user;
+import 'account_settings_screen.dart';
+import 'chat_settings_screen.dart';
+import 'appearance_settings_screen.dart';
+import 'notifications_settings_screen.dart';
+import 'privacy_settings_screen.dart';
+import 'data_usage_settings_screen.dart';
+import 'help_screen.dart';
+
 
 class SettingsScreen extends StatefulWidget {
-  const SettingsScreen({Key? key}) : super(key: key);
+  const SettingsScreen({super.key});
 
   @override
   State<SettingsScreen> createState() => _SettingsScreenState();
@@ -103,12 +111,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
             const Divider(),
             // Opciones de Configuración
-            ListTile(
+              ListTile(
               leading: const Icon(Icons.account_circle_outlined),
               title: const Text('Cuenta'),
               subtitle: const Text('Privacidad, seguridad, cambiar número'),
               onTap: () {
-                // TODO: Navegar a la pantalla de Cuenta
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => const AccountSettingsScreen(),
+                  ),
+                );
               },
             ),
             ListTile(
@@ -116,15 +128,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
               title: const Text('Chats'),
               subtitle: const Text('Historial de chats, tema, fondo de pantalla'),
               onTap: () {
-                // TODO: Navegar a la pantalla de Chats
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => const ChatSettingsScreen(),
+                  ),
+                );
               },
             ),
             ListTile(
-              leading: const Icon(Icons.color_lens_outlined),
+              leading: const Icon(Icons.palette_outlined),
               title: const Text('Apariencia'),
               subtitle: const Text('Tema, tamaño de fuente'),
               onTap: () {
-                // TODO: Navegar a la pantalla de Apariencia
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => const AppearanceSettingsScreen(),
+                  ),
+                );
               },
             ),
             ListTile(
@@ -132,7 +152,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
               title: const Text('Notificaciones'),
               subtitle: const Text('Mensajes, grupos, llamadas'),
               onTap: () {
-                // TODO: Navegar a la pantalla de Notificaciones
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => const NotificationsSettingsScreen(),
+                  ),
+                );
               },
             ),
             ListTile(
@@ -140,7 +164,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
               title: const Text('Privacidad'),
               subtitle: const Text('Bloqueo de pantalla, doble autentificación'),
               onTap: () {
-                // TODO: Navegar a la pantalla de Privacidad
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => const PrivacySettingsScreen(),
+                  ),
+                );
               },
             ),
             ListTile(
@@ -148,7 +176,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
               title: const Text('Uso de datos'),
               subtitle: const Text('Descarga automática, uso de red'),
               onTap: () {
-                // TODO: Navegar a la pantalla de Uso de datos
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => const DataUsageSettingsScreen(),
+                  ),
+                );
               },
             ),
             const Divider(),
@@ -157,20 +189,34 @@ class _SettingsScreenState extends State<SettingsScreen> {
               title: const Text('Ayuda'),
               subtitle: const Text('Centro de ayuda, contáctanos'),
               onTap: () {
-                // TODO: Navegar a la pantalla de Ayuda
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => const HelpScreen(),
+                  ),
+                );
               },
             ),
             ListTile(
               leading: const Icon(Icons.person_add_alt_1_outlined),
               title: const Text('Invita a tus amigos'),
               onTap: () {
-                // TODO: Implementar función de invitar
+                showDialog(
+                  context: context,
+                  builder: (_) => AlertDialog(
+                    title: const Text('Invita a tus amigos'),
+                    content: const Text(
+                      'Comparte este enlace para invitar a tus amigos:\n\n'
+                      'https://pixelchat.local/invite',
+                    ),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(context),
+                        child: const Text('Cerrar'),
+                      ),
+                    ],
+                  ),
+                );
               },
-            ),
-            ListTile(
-              leading: const Icon(Icons.logout, color: Colors.red),
-              title: const Text('Cerrar sesión', style: TextStyle(color: Colors.red)),
-              onTap: _logout,
             ),
           ],
         ),

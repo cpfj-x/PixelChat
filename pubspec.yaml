@@ -37,8 +37,11 @@ dependencies:
   firebase_auth: ^6.1.2
   cloud_firestore: ^6.1.0
   firebase_storage: ^13.0.4
-  image_picker: ^1.1.2
   intl: ^0.20.2
+  provider: ^6.1.5+1
+  lottie: ^3.1.0
+  image_picker: ^1.2.1
+  flutter_webrtc: ^0.9.46
 
 dev_dependencies:
   flutter_test:
@@ -61,6 +64,8 @@ flutter:
   # included with your application, so that you can use the icons in
   # the material Icons class.
   uses-material-design: true
+  assets:
+    - assets/lottie/loading.json
 
   # To add assets to your application, add an assets section, like this:
   # assets:

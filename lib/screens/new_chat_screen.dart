@@ -8,7 +8,7 @@ import '../models/user_model.dart' as app_user;
 import 'chat_detail_screen.dart';
 
 class NewChatScreen extends StatefulWidget {
-  const NewChatScreen({Key? key}) : super(key: key);
+  const NewChatScreen({super.key});
 
   @override
   State<NewChatScreen> createState() => _NewChatScreenState();

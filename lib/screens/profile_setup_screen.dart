@@ -1,173 +1,113 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
-import 'home_screen.dart';
+import 'package:image_picker/image_picker.dart';
 
 class ProfileSetupScreen extends StatefulWidget {
-  const ProfileSetupScreen({Key? key}) : super(key: key);
+  const ProfileSetupScreen({super.key});
 
   @override
   State<ProfileSetupScreen> createState() => _ProfileSetupScreenState();
 }
 
 class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
-  final _nameController = TextEditingController();
-  final _lastNameController = TextEditingController();
-  bool _isLoading = false;
+  final _nameCtrl = TextEditingController();
+  File? _avatarFile;
+
+  Future<void> _pickAvatar() async {
+    final picker = ImagePicker();
+    final picked = await picker.pickImage(
+      source: ImageSource.gallery,
+      maxWidth: 512,
+      imageQuality: 80,
+    );
+
+    if (picked != null) {
+      setState(() {
+        _avatarFile = File(picked.path);
+      });
+    }
+  }
+
+  Future<void> _saveProfile() async {
+    // TODO: aquí subes el avatar a Firebase Storage y guardas la URL + nombre en Firestore.
+    // Ejemplo:
+    // await userService.updateProfile(name: _nameCtrl.text, avatarFile: _avatarFile);
+
+    Navigator.pop(context); // o navegas al main
+  }
 
   @override
   void dispose() {
-    _nameController.dispose();
-    _lastNameController.dispose();
+    _nameCtrl.dispose();
     super.dispose();
-  }
-
-  void _completeSetup() {
-    if (_nameController.text.isEmpty || _lastNameController.text.isEmpty) {
-      _showErrorDialog('Por favor completa todos los campos');
-      return;
-    }
-
-    setState(() {
-      _isLoading = true;
-    });
-
-    // Simular guardado de perfil
-    Future.delayed(const Duration(seconds: 1), () {
-      if (mounted) {
-        Navigator.of(context).pushReplacementNamed('/main');
-      }
-    });
-  }
-
-  void _showErrorDialog(String message) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Error'),
-        content: Text(message),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('OK'),
-          ),
-        ],
-      ),
-    );
   }
 
   @override
   Widget build(BuildContext context) {
+    final avatar = _avatarFile;
+
     return Scaffold(
-      backgroundColor: Colors.white,
-      body: SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const SizedBox(height: 40),
-              // Botón atrás
-              GestureDetector(
-                onTap: () => Navigator.pop(context),
-                child: const Icon(Icons.arrow_back, color: Colors.black),
-              ),
-              const SizedBox(height: 32),
-              // Título
-              const Text(
-                'Tu perfil',
-                style: TextStyle(
-                  fontSize: 28,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black,
-                ),
-              ),
-              const SizedBox(height: 32),
-              // Avatar
-              Center(
-                child: Stack(
-                  children: [
-                    Container(
-                      width: 100,
-                      height: 100,
-                      decoration: BoxDecoration(
-                        color: Colors.grey[200],
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(
-                        Icons.person,
-                        size: 50,
-                        color: Colors.grey,
-                      ),
-                    ),
-                    Positioned(
-                      bottom: 0,
-                      right: 0,
-                      child: Container(
-                        width: 32,
-                        height: 32,
-                        decoration: const BoxDecoration(
-                          color: Color(0xFF00BCD4),
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(
-                          Icons.add,
-                          color: Colors.white,
-                          size: 20,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 32),
-              // Campo de nombre
-              TextField(
-                controller: _nameController,
-                decoration: InputDecoration(
-                  hintText: 'Nombre',
-                  hintStyle: const TextStyle(color: Colors.grey),
-                  filled: true,
-                  fillColor: Colors.grey[100],
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide.none,
+      appBar: AppBar(
+        title: const Text('Configura tu perfil'),
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(24.0),
+        child: Column(
+          children: [
+            GestureDetector(
+              onTap: _pickAvatar,
+              child: Stack(
+                alignment: Alignment.bottomRight,
+                children: [
+                  CircleAvatar(
+                    radius: 48,
+                    backgroundColor: const Color(0xFF00BCD4),
+                    backgroundImage:
+                        avatar != null ? FileImage(avatar) : null,
+                    child: avatar == null
+                        ? const Text(
+                            'P',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 40,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          )
+                        : null,
                   ),
-                ),
-              ),
-              const SizedBox(height: 16),
-              // Campo de apellido
-              TextField(
-                controller: _lastNameController,
-                decoration: InputDecoration(
-                  hintText: 'Apellido',
-                  hintStyle: const TextStyle(color: Colors.grey),
-                  filled: true,
-                  fillColor: Colors.grey[100],
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide.none,
+                  Container(
+                    decoration: const BoxDecoration(
+                      color: Colors.black87,
+                      shape: BoxShape.circle,
+                    ),
+                    padding: const EdgeInsets.all(6),
+                    child: const Icon(
+                      Icons.camera_alt,
+                      size: 20,
+                      color: Colors.white,
+                    ),
                   ),
-                ),
+                ],
               ),
-              const SizedBox(height: 32),
-              // Botón de guardar
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: _isLoading ? null : _completeSetup,
-                  child: _isLoading
-                      ? const SizedBox(
-                          height: 20,
-                          width: 20,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                          ),
-                        )
-                      : const Text('Guardar'),
-                ),
+            ),
+            const SizedBox(height: 24),
+            TextField(
+              controller: _nameCtrl,
+              decoration: const InputDecoration(
+                labelText: 'Nombre',
+                hintText: 'Cómo te verán tus contactos',
               ),
-            ],
-          ),
+            ),
+            const Spacer(),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: _saveProfile,
+                child: const Text('Guardar'),
+              ),
+            ),
+          ],
         ),
       ),
     );

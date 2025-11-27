@@ -4,7 +4,7 @@ import 'new_group_screen.dart'; // Se creará en el siguiente paso
 import 'new_community_screen.dart'; // Se creará en el siguiente paso
 
 class NewChatTypeScreen extends StatelessWidget {
-  const NewChatTypeScreen({Key? key}) : super(key: key);
+  const NewChatTypeScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
