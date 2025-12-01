@@ -23,7 +23,6 @@ void main() async {
 class PixelChatApp extends StatelessWidget {
   const PixelChatApp({Key? key}) : super(key: key);
 
-  // Color oficial PixelChat (morado)
   static const primary = Color(0xFF7A5AF8);
 
   @override
@@ -33,8 +32,13 @@ class PixelChatApp extends StatelessWidget {
         return MaterialApp(
           debugShowCheckedModeBanner: false,
           title: "PixelChat",
+
+          // 🔥🔥 IMPORTANTE 🔥🔥
+          // Debemos asegurar que el Splash redirija a HomeScreen()
+          // Y que las rutas no dependan de MainScreen
           initialRoute: AppRoutes.splash,
           routes: AppRoutes.getRoutes(),
+
           themeMode: themeProvider.themeMode,
 
           // ==========================
@@ -59,7 +63,7 @@ class PixelChatApp extends StatelessWidget {
               style: ElevatedButton.styleFrom(
                 backgroundColor: primary,
                 foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(
+                padding: EdgeInsets.symmetric(
                   horizontal: 32,
                   vertical: 16,
                 ),
@@ -90,7 +94,7 @@ class PixelChatApp extends StatelessWidget {
               seedColor: primary,
               brightness: Brightness.dark,
               background: Colors.black,
-              surface: const Color(0xFF0A0A0A),
+              surface: Color(0xFF0A0A0A),
             ),
 
             scaffoldBackgroundColor: Colors.black,
@@ -106,7 +110,7 @@ class PixelChatApp extends StatelessWidget {
               style: ElevatedButton.styleFrom(
                 backgroundColor: primary,
                 foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(
+                padding: EdgeInsets.symmetric(
                   horizontal: 32,
                   vertical: 16,
                 ),

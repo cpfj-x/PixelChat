@@ -5,6 +5,8 @@ import '../services/chat_service.dart';
 import '../models/chat_model.dart';
 import 'chat_detail_screen.dart';
 import 'new_chat_type_screen.dart';
+import 'explore_communities_screen.dart';
+import 'settings_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -15,64 +17,27 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   final ChatService _chatService = ChatService();
-  final FirebaseAuth _firebaseAuth = FirebaseAuth.instance;
+  final FirebaseAuth _auth = FirebaseAuth.instance;
 
-  late Stream<List<Chat>> _chatsStream;
+  int _currentIndex = 0;
 
-  static const Color primary = Color(0xFF7A5AF8); // TU COLOR MORADO
+  static const Color primary = Color(0xFF7A5AF8);
 
-  @override
-  void initState() {
-    super.initState();
-    final user = _firebaseAuth.currentUser;
-
-    if (user != null) {
-      _chatsStream = _chatService
-          .getUserChats(user.uid)
-          .map((chats) => chats
-              .where((chat) => chat.type == ChatType.direct)
-              .toList());
-    }
-  }
-
-  // ---------------------------- Logout ----------------------------
-  void _logout() async {
-    final confirm = await showDialog(
-      context: context,
-      builder: (_) {
-        return AlertDialog(
-          title: const Text("Cerrar sesión"),
-          content: const Text("¿Seguro que quieres cerrar sesión?"),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: const Text("Cancelar"),
-            ),
-            TextButton(
-              onPressed: () => Navigator.pop(context, true),
-              child: const Text("Cerrar sesión"),
-            ),
-          ],
-        );
-      },
-    );
-
-    if (confirm == true) {
-      await _firebaseAuth.signOut();
-      if (!mounted) return;
-      Navigator.pushReplacementNamed(context, '/login');
-    }
-  }
-
-  // ----------------------------------------------------------------
-  // BUILD UI
-  // ----------------------------------------------------------------
   @override
   Widget build(BuildContext context) {
+    final uid = _auth.currentUser!.uid;
+
+    final tabs = [
+      _ChatsTab(uid: uid),
+      _GroupsTab(uid: uid),
+      const ExploreCommunitiesScreen(),
+      const SettingsScreen(),
+    ];
+
     return Scaffold(
       backgroundColor: Colors.white,
 
-      // ---------------------------- APPBAR WHATSAPP ----------------------------
+      // ---------------------- APPBAR ----------------------
       appBar: AppBar(
         backgroundColor: primary,
         elevation: 0,
@@ -81,139 +46,173 @@ class _HomeScreenState extends State<HomeScreen> {
           style: TextStyle(fontWeight: FontWeight.w600),
         ),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.search),
-            onPressed: () {},
-          ),
-          PopupMenuButton<int>(
-            icon: const Icon(Icons.more_vert),
-            onSelected: (value) {
-              if (value == 1) _logout();
-            },
-            itemBuilder: (context) => [
-              const PopupMenuItem(value: 1, child: Text("Cerrar sesión")),
-            ],
-          ),
+          if (_currentIndex == 0 || _currentIndex == 1)
+            IconButton(
+              icon: const Icon(Icons.search),
+              onPressed: () {},
+            ),
         ],
       ),
 
-      // ---------------------------- LISTA DE CHATS ----------------------------
-      body: StreamBuilder<List<Chat>>(
-        stream: _chatsStream,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
-
-          if (snapshot.hasError) {
-            return const Center(child: Text("Error al cargar chats"));
-          }
-
-          final chats = snapshot.data ?? [];
-
-          if (chats.isEmpty) {
-            return const Center(
-              child: Text(
-                "No tienes chats aún",
-                style: TextStyle(color: Colors.grey, fontSize: 16),
-              ),
-            );
-          }
-
-          return ListView.separated(
-            itemCount: chats.length,
-            separatorBuilder: (_, __) =>
-                Divider(height: 0, color: Colors.grey.shade300),
-            itemBuilder: (_, index) {
-              final chat = chats[index];
-              return _chatTile(chat);
-            },
-          );
-        },
+      // ---------------------- BODY CON TRANSICIÓN ----------------------
+      body: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 200),
+        child: tabs[_currentIndex],
       ),
 
-      // ---------------------------- FAB ----------------------------
-      floatingActionButton: FloatingActionButton(
-        backgroundColor: primary,
-        child: const Icon(Icons.chat),
-        onPressed: () {
+      // ---------------------- FAB ----------------------
+      floatingActionButton: _currentIndex == 3
+          ? null
+          : FloatingActionButton(
+              backgroundColor: primary,
+              child: const Icon(Icons.chat),
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const NewChatTypeScreen(),
+                  ),
+                );
+              },
+            ),
+
+      // ---------------------- NAV BAR ----------------------
+      bottomNavigationBar: BottomNavigationBar(
+        currentIndex: _currentIndex,
+        selectedItemColor: primary,
+        unselectedItemColor: Colors.grey,
+        backgroundColor: Colors.white,
+        type: BottomNavigationBarType.fixed,
+        onTap: (i) => setState(() => _currentIndex = i),
+        items: const [
+          BottomNavigationBarItem(
+            icon: Icon(Icons.chat_bubble_outline),
+            label: "Chats",
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.group_outlined),
+            label: "Grupos",
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.public),
+            label: "Comunidades",
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.settings),
+            label: "Config",
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// =======================================================
+//                     CHATS TAB
+// =======================================================
+class _ChatsTab extends StatelessWidget {
+  final String uid;
+  const _ChatsTab({required this.uid});
+
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<List<Chat>>(
+      stream: ChatService().getUserChats(uid),
+      builder: (_, snap) {
+        if (!snap.hasData) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        final chats =
+            snap.data!.where((c) => c.type == ChatType.direct).toList();
+
+        if (chats.isEmpty) {
+          return const Center(child: Text("No tienes chats aún"));
+        }
+
+        return _chatList(context, chats);
+      },
+    );
+  }
+}
+
+// =======================================================
+//                     GROUPS TAB
+// =======================================================
+class _GroupsTab extends StatelessWidget {
+  final String uid;
+  const _GroupsTab({required this.uid});
+
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<List<Chat>>(
+      stream: ChatService().getUserChats(uid),
+      builder: (_, snap) {
+        if (!snap.hasData) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        final groups =
+            snap.data!.where((c) => c.type == ChatType.group).toList();
+
+        if (groups.isEmpty) {
+          return const Center(child: Text("No perteneces a ningún grupo"));
+        }
+
+        return _chatList(context, groups);
+      },
+    );
+  }
+}
+
+// =======================================================
+//                   LISTA COMPARTIDA
+// =======================================================
+Widget _chatList(BuildContext context, List<Chat> chats) {
+  return ListView.separated(
+    itemCount: chats.length,
+    separatorBuilder: (_, __) =>
+        Divider(height: 0, color: Colors.grey.shade300),
+    itemBuilder: (_, index) {
+      final chat = chats[index];
+
+      return ListTile(
+        onTap: () {
           Navigator.push(
             context,
-            MaterialPageRoute(builder: (_) => const NewChatTypeScreen()),
+            MaterialPageRoute(
+              builder: (_) => ChatDetailScreen(chat: chat),
+            ),
           );
         },
-      ),
-    );
-  }
-
-  // ----------------------------------------------------------------
-  // ITEM — ESTILO WHATSAPP
-  // ----------------------------------------------------------------
-  Widget _chatTile(Chat chat) {
-    return ListTile(
-      onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (_) => ChatDetailScreen(chat: chat)),
-        );
-      },
-      leading: CircleAvatar(
-        radius: 26,
-        backgroundColor: primary.withOpacity(0.15),
-        child: Text(
-          chat.name.isNotEmpty ? chat.name[0].toUpperCase() : "?",
-          style: const TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-            color: primary,
+        leading: CircleAvatar(
+          radius: 26,
+          backgroundColor: const Color(0xFF7A5AF8).withOpacity(0.15),
+          child: Text(
+            chat.name.isNotEmpty ? chat.name[0].toUpperCase() : "?",
+            style: const TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+            ),
           ),
         ),
-      ),
-      title: Text(
-        chat.name,
-        style: const TextStyle(
-          fontWeight: FontWeight.bold,
-          fontSize: 16,
+        title: Text(
+          chat.name,
+          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
         ),
-      ),
-      subtitle: Text(
-        chat.lastMessage ?? "Sin mensajes",
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-        style: const TextStyle(color: Colors.grey),
-      ),
-      trailing: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: [
-          Text(
-            _formatTime(chat.lastMessageTime),
-            style: const TextStyle(color: Colors.grey, fontSize: 12),
-          ),
-          if (chat.isMuted)
-            const Icon(Icons.volume_off, size: 16, color: Colors.grey),
-        ],
-      ),
-    );
-  }
-
-  // ----------------------------------------------------------------
-  // TIME FORMATTER
-  // ----------------------------------------------------------------
-  String _formatTime(DateTime? dateTime) {
-    if (dateTime == null) return "";
-
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-    final yesterday = today.subtract(const Duration(days: 1));
-    final messageDate = DateTime(dateTime.year, dateTime.month, dateTime.day);
-
-    if (messageDate == today) {
-      return "${dateTime.hour}:${dateTime.minute.toString().padLeft(2, '0')}";
-    } else if (messageDate == yesterday) {
-      return "Ayer";
-    } else {
-      return "${dateTime.day}/${dateTime.month}";
-    }
-  }
+        subtitle: Text(
+          chat.lastMessage ?? "Sin mensajes",
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(color: Colors.grey),
+        ),
+        trailing: Text(
+          chat.lastMessageTime != null
+              ? "${chat.lastMessageTime!.day}/${chat.lastMessageTime!.month}"
+              : "",
+          style: const TextStyle(fontSize: 12, color: Colors.grey),
+        ),
+      );
+    },
+  );
 }

@@ -11,6 +11,7 @@ import 'notifications_settings_screen.dart';
 import 'privacy_settings_screen.dart';
 import 'data_usage_settings_screen.dart';
 import 'help_screen.dart';
+import 'profile_edit_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -21,7 +22,7 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen> {
   final _authService = AuthService();
-  app_user.User? _currentUserData;
+  app_user.AppUser? _currentUserData;
 
   static const Color primary = Color(0xFF7A5AF8); // PixelChat Purple
 
@@ -55,12 +56,29 @@ class _SettingsScreenState extends State<SettingsScreen> {
             onPressed: () async {
               await _authService.logoutUser();
               if (!mounted) return;
-              Navigator.of(context).pushNamedAndRemoveUntil("/login", (r) => false);
+              Navigator.of(context)
+                  .pushNamedAndRemoveUntil("/login", (r) => false);
             },
           ),
         ],
       ),
     );
+  }
+
+  Future<void> _openEditProfile() async {
+    final user = _currentUserData;
+    if (user == null) return;
+
+    final changed = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        builder: (_) => ProfileEditScreen(user: user),
+      ),
+    );
+
+    if (changed == true) {
+      // recargamos datos actualizados
+      await _loadUserData();
+    }
   }
 
   // ------------------------------------------------------------
@@ -77,17 +95,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
           style: TextStyle(fontWeight: FontWeight.w600),
         ),
       ),
-
       body: ListView(
         children: [
           const SizedBox(height: 12),
-
-          // ------------------------------------------------------------
-          //                        HEADER PERFIL
-          // ------------------------------------------------------------
           _buildProfileSection(),
-
           const SizedBox(height: 12),
+
           _sectionTitle("Cuenta"),
 
           _settingsTile(
@@ -156,7 +169,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
           const SizedBox(height: 30),
 
-          // Cerrar sesión
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: TextButton.icon(
@@ -181,44 +193,62 @@ class _SettingsScreenState extends State<SettingsScreen> {
   // ------------------------------------------------------------
 
   Widget _buildProfileSection() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
-      color: primary.withOpacity(0.10),
-      child: Row(
-        children: [
-          CircleAvatar(
-            radius: 34,
-            backgroundColor: primary,
-            child: Text(
-              _currentUserData?.username[0].toUpperCase() ?? "?",
-              style: const TextStyle(fontSize: 28, color: Colors.white),
+    final user = _currentUserData;
+    final hasAvatar =
+        user != null && user.profileImageUrl != null && user.profileImageUrl!.isNotEmpty;
+
+    ImageProvider? avatarImage;
+    if (hasAvatar) {
+      avatarImage = NetworkImage(user!.profileImageUrl!);
+    }
+
+    final initialLetter =
+        (user?.username.isNotEmpty == true) ? user!.username[0].toUpperCase() : "?";
+
+    return InkWell(
+      onTap: user == null ? null : _openEditProfile,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
+        color: primary.withOpacity(0.10),
+        child: Row(
+          children: [
+            CircleAvatar(
+              radius: 34,
+              backgroundColor: primary,
+              backgroundImage: avatarImage,
+              child: avatarImage == null
+                  ? Text(
+                      initialLetter,
+                      style: const TextStyle(fontSize: 28, color: Colors.white),
+                    )
+                  : null,
             ),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  _currentUserData?.username ?? "Cargando...",
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w600,
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    user?.username ?? "Cargando...",
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  _currentUserData?.email ?? "—",
-                  style: TextStyle(
-                    color: Colors.grey.shade700,
-                    fontSize: 14,
+                  const SizedBox(height: 4),
+                  Text(
+                    user?.email ?? "—",
+                    style: TextStyle(
+                      color: Colors.grey.shade700,
+                      fontSize: 14,
+                    ),
                   ),
-                )
-              ],
+                ],
+              ),
             ),
-          ),
-          Icon(Icons.qr_code_2, size: 28, color: primary),
-        ],
+            Icon(Icons.qr_code_2, size: 28, color: primary),
+          ],
+        ),
       ),
     );
   }

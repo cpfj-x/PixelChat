@@ -15,6 +15,8 @@ class Chat {
   final String? lastMessageSenderId;
   final String createdBy;
   final bool isMuted;
+  final bool isPublic;
+
 
   Chat({
     required this.id,
@@ -29,6 +31,7 @@ class Chat {
     this.lastMessageSenderId,
     required this.createdBy,
     required this.isMuted,
+    required this.isPublic,
   });
 
   // --------------------------
@@ -47,6 +50,7 @@ class Chat {
       'lastMessageSenderId': lastMessageSenderId,
       'createdBy': createdBy,
       'isMuted': isMuted,
+      'isPublic': isPublic,
     };
   }
 
@@ -66,7 +70,8 @@ class Chat {
       lastMessage: map['lastMessage'],
       lastMessageSenderId: map['lastMessageSenderId'],
       createdBy: map['createdBy'] ?? '',
-      isMuted: map['isMuted'] ?? false,
+      isMuted: map['isMuted'] ?? false, 
+      isPublic: map['isPublic'] ?? false,
     );
   }
 
@@ -119,7 +124,8 @@ class Chat {
       lastMessage: lastMessage ?? this.lastMessage,
       lastMessageSenderId: lastMessageSenderId ?? this.lastMessageSenderId,
       createdBy: createdBy ?? this.createdBy,
-      isMuted: isMuted ?? this.isMuted,
+      isMuted: isMuted ?? this.isMuted, 
+      isPublic: false,
     );
   }
 }

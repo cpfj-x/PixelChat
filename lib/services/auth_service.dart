@@ -1,6 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
 import 'package:cloud_firestore/cloud_firestore.dart';
-import '../models/user_model.dart';
+import '../models/user_model.dart' as app_user;
 
 class AuthService {
   final firebase_auth.FirebaseAuth _auth = firebase_auth.FirebaseAuth.instance;
@@ -13,7 +13,7 @@ class AuthService {
 
   // ================= REGISTER =================
 
-  Future<User?> registerUser({
+  Future<app_user.AppUser?> registerUser({
     required String username,
     required String email,
     required String password,
@@ -41,7 +41,7 @@ class AuthService {
       }
 
       // Crear documento en Firestore
-      final user = User(
+      final user = app_user.AppUser(
         uid: firebaseUser.uid,
         username: username,
         email: email,
@@ -63,7 +63,7 @@ class AuthService {
 
   // ================= LOGIN =================
 
-  Future<User?> loginUser({
+  Future<app_user.AppUser?> loginUser({
     required String email,
     required String password,
   }) async {
@@ -90,7 +90,7 @@ class AuthService {
         'lastActive': DateTime.now(),
       });
 
-      return User.fromMap(userDoc.data() as Map<String, dynamic>);
+      return app_user.AppUser.fromMap(userDoc.data() as Map<String, dynamic>);
     } on firebase_auth.FirebaseAuthException catch (e) {
       throw Exception(_mapAuthError(e.code));
     } catch (e) {
@@ -110,19 +110,19 @@ class AuthService {
 
   // ================= QUERIES DE USUARIO =================
 
-  Future<User?> getUserById(String uid) async {
+  Future<app_user.AppUser?> getUserById(String uid) async {
     try {
       final userDoc = await _firestore.collection('users').doc(uid).get();
 
       if (!userDoc.exists) return null;
 
-      return User.fromMap(userDoc.data() as Map<String, dynamic>);
+      return app_user.AppUser.fromMap(userDoc.data() as Map<String, dynamic>);
     } catch (e) {
       throw Exception('Error al obtener usuario: $e');
     }
   }
 
-  Future<User?> getUserByUsername(String username) async {
+  Future<app_user.AppUser?> getUserByUsername(String username) async {
     try {
       final query = await _firestore
           .collection('users')
@@ -132,7 +132,7 @@ class AuthService {
 
       if (query.docs.isEmpty) return null;
 
-      return User.fromMap(query.docs.first.data());
+      return app_user.AppUser.fromMap(query.docs.first.data());
     } catch (e) {
       throw Exception('Error al obtener usuario: $e');
     }

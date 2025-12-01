@@ -48,7 +48,7 @@ class _SplashScreenState extends State<SplashScreen>
     final routes = AppRoutes.getRoutes();
 
     final nextScreen = user != null
-        ? routes[AppRoutes.main]!(context)
+        ? routes[AppRoutes.home]!(context)
         : routes[AppRoutes.login]!(context);
 
     // Navegación con Fade suave

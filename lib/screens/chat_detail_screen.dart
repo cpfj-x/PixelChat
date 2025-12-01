@@ -387,6 +387,60 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
       appBar: _buildHeader(),
       body: Column(
         children: [
+          // ======================================================
+          //  BOTÓN DE UNIRSE / SALIR (SOLO PARA COMUNIDADES)
+          // ======================================================
+          if (widget.chat.type == ChatType.community)
+            FutureBuilder(
+              future: _chatService.getChatById(widget.chat.id),
+              builder: (_, snap) {
+                if (!snap.hasData) return const SizedBox(height: 0);
+
+                final chat = snap.data!;
+                final userId = _firebaseAuth.currentUser!.uid;
+                final isMember = chat.memberIds.contains(userId);
+
+                return Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    border: Border(
+                      bottom: BorderSide(color: Colors.grey.shade300),
+                    ),
+                  ),
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: isMember ? Colors.redAccent : primary,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                    onPressed: () async {
+                      if (isMember) {
+                        await _chatService.leaveCommunity(
+                          chatId: widget.chat.id,
+                          userId: userId,
+                        );
+                      } else {
+                        await _chatService.joinCommunity(
+                          chatId: widget.chat.id,
+                          userId: userId,
+                        );
+                      }
+
+                      setState(() {});
+                    },
+                    child: Text(
+                      isMember ? "Salir de la comunidad" : "Unirse a la comunidad",
+                      style: const TextStyle(color: Colors.white, fontSize: 16),
+                    ),
+                  ),
+                );
+              },
+            ),
+
           Expanded(
             child: StreamBuilder<List<Message>>(
               stream: _messagesStream,

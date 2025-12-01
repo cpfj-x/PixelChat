@@ -4,7 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import '../models/user_model.dart' as app_user;
 
 class SelectMembersScreen extends StatefulWidget {
-  final List<app_user.User> initialMembers;
+  final List<app_user.AppUser> initialMembers;
 
   const SelectMembersScreen({
     super.key,
@@ -18,7 +18,7 @@ class SelectMembersScreen extends StatefulWidget {
 class _SelectMembersScreenState extends State<SelectMembersScreen> {
   static const Color primary = Color(0xFF7A5AF8); // PixelChat Purple
 
-  final _selectedMembers = <app_user.User>{};
+  final _selectedMembers = <app_user.AppUser>{};
   final _currentUser = FirebaseAuth.instance.currentUser;
 
   @override
@@ -27,7 +27,7 @@ class _SelectMembersScreenState extends State<SelectMembersScreen> {
     _selectedMembers.addAll(widget.initialMembers);
   }
 
-  void _toggleMember(app_user.User user) {
+  void _toggleMember(app_user.AppUser user) {
     setState(() {
       if (_selectedMembers.contains(user)) {
         _selectedMembers.remove(user);
@@ -81,7 +81,7 @@ class _SelectMembersScreenState extends State<SelectMembersScreen> {
           }
 
           final users = snapshot.data!.docs
-              .map((doc) => app_user.User.fromMap(doc.data() as Map<String, dynamic>))
+              .map((doc) => app_user.AppUser.fromMap(doc.data() as Map<String, dynamic>))
               .where((u) => u.uid != _currentUser?.uid)
               .toList();
 

@@ -6,7 +6,7 @@ import '../screens/login_screen.dart';
 import '../screens/register_screen.dart';
 import '../screens/phone_verification_screen.dart';
 import '../screens/profile_setup_screen.dart';
-import '../screens/main_screen.dart';
+import '../screens/home_screen.dart'; // 🔥 Nuevo: HomeScreen es la pantalla principal
 
 // CHATS
 import '../screens/new_chat_type_screen.dart';
@@ -30,7 +30,7 @@ class AppRoutes {
   static const String register = '/register';
   static const String phoneVerification = '/phone-verification';
   static const String profileSetup = '/profile-setup';
-  static const String main = '/main';
+  static const String home = '/home';          // 🔥 En vez de /main
 
   // Crear nuevos chats
   static const String newChatType = '/new-chat-type';
@@ -59,7 +59,9 @@ class AppRoutes {
       register: (context) => const RegisterScreen(),
       phoneVerification: (context) => const PhoneVerificationScreen(),
       profileSetup: (context) => const ProfileSetupScreen(),
-      main: (context) => const MainScreen(),
+
+      // 🔥 HOME es la pantalla principal
+      home: (context) => const HomeScreen(),
 
       // Creación de chats
       newChatType: (context) => const NewChatTypeScreen(),

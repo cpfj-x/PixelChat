@@ -19,8 +19,8 @@ class _NewChatScreenState extends State<NewChatScreen> {
   final _chatService = ChatService();
   final _currentUser = FirebaseAuth.instance.currentUser;
 
-  List<app_user.User> _allUsers = [];
-  List<app_user.User> _filteredUsers = [];
+  List<app_user.AppUser> _allUsers = [];
+  List<app_user.AppUser> _filteredUsers = [];
 
   final TextEditingController _searchController = TextEditingController();
 
@@ -48,7 +48,7 @@ class _NewChatScreenState extends State<NewChatScreen> {
           await FirebaseFirestore.instance.collection('users').get();
 
       final users = snapshot.docs
-          .map((doc) => app_user.User.fromMap(doc.data()))
+          .map((doc) => app_user.AppUser.fromMap(doc.data()))
           .where((user) => user.uid != _currentUser?.uid)
           .toList();
 
@@ -77,7 +77,7 @@ class _NewChatScreenState extends State<NewChatScreen> {
   // -------------------------------------------------------
   // Crear chat directo
   // -------------------------------------------------------
-  Future<void> _startChat(app_user.User selectedUser) async {
+  Future<void> _startChat(app_user.AppUser selectedUser) async {
     if (_currentUser == null) return;
 
     try {

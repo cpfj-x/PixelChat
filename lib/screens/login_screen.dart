@@ -30,7 +30,7 @@ class _LoginScreenState extends State<LoginScreen> {
       );
 
       if (!mounted) return;
-      Navigator.pushReplacementNamed(context, AppRoutes.main);
+      Navigator.pushReplacementNamed(context, AppRoutes.home);
     } on FirebaseAuthException catch (e) {
       setState(() => _error = e.message ?? "Error al iniciar sesión");
     } finally {

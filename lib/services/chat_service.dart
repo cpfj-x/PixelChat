@@ -33,7 +33,8 @@ class ChatService {
         createdAt: DateTime.now(),
         lastMessageTime: DateTime.now(),
         createdBy: userId1,
-        isMuted: false,
+        isMuted: false, 
+        isPublic: false,
       );
 
       await _firestore.collection('chats').doc(chatId).set(chat.toMap());
@@ -66,7 +67,8 @@ class ChatService {
         createdAt: DateTime.now(),
         lastMessageTime: DateTime.now(),
         createdBy: createdBy,
-        isMuted: false,
+        isMuted: false, 
+        isPublic: false,
       );
 
       await chatRef.set(chat.toMap());
@@ -85,6 +87,7 @@ class ChatService {
     required List<String> memberIds,
     String? communityImageUrl,
     String? description,
+    bool isPublic = true, // 👈 por defecto pública
   }) async {
     try {
       final chatRef = _firestore.collection('chats').doc();
@@ -100,6 +103,7 @@ class ChatService {
         lastMessageTime: DateTime.now(),
         createdBy: createdBy,
         isMuted: false,
+        isPublic: isPublic, // 👈 NUEVO
       );
 
       await chatRef.set(chat.toMap());
@@ -108,6 +112,30 @@ class ChatService {
       throw Exception('Error al crear comunidad: $e');
     }
   }
+  // ===========================
+  // UNIRSE A UNA COMUNIDAD
+  // ===========================
+  Future<void> joinCommunity({
+    required String chatId,
+    required String userId,
+  }) async {
+    await _firestore.collection("chats").doc(chatId).update({
+      "memberIds": FieldValue.arrayUnion([userId]),
+    });
+  }
+
+  // ===========================
+  // SALIR DE UNA COMUNIDAD
+  // ===========================
+  Future<void> leaveCommunity({
+    required String chatId,
+    required String userId,
+  }) async {
+    await _firestore.collection("chats").doc(chatId).update({
+      "memberIds": FieldValue.arrayRemove([userId]),
+    });
+  }
+
 
   // ===========================================================================
   // OBTENER CHATS DEL USUARIO

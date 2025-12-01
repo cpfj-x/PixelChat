@@ -6,23 +6,39 @@ import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
-class ProfileSetupScreen extends StatefulWidget {
-  const ProfileSetupScreen({super.key});
+import '../models/user_model.dart' as app_user;
+
+class ProfileEditScreen extends StatefulWidget {
+  final app_user.AppUser user;
+
+  const ProfileEditScreen({super.key, required this.user});
 
   @override
-  State<ProfileSetupScreen> createState() => _ProfileSetupScreenState();
+  State<ProfileEditScreen> createState() => _ProfileEditScreenState();
 }
 
-class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
+class _ProfileEditScreenState extends State<ProfileEditScreen> {
   final _nameCtrl = TextEditingController();
-  File? _avatarFile;
+  final _bioCtrl = TextEditingController();
+
+  File? _newAvatarFile;
+  String? _currentAvatarUrl;
   bool _isSaving = false;
 
-  static const Color primary = Color(0xFF7A5AF8); // PixelChat Purple
+  static const Color primary = Color(0xFF7A5AF8);
+
+  @override
+  void initState() {
+    super.initState();
+    _nameCtrl.text = widget.user.username;
+    _bioCtrl.text = widget.user.bio ?? '';
+    _currentAvatarUrl = widget.user.profileImageUrl;
+  }
 
   @override
   void dispose() {
     _nameCtrl.dispose();
+    _bioCtrl.dispose();
     super.dispose();
   }
 
@@ -36,7 +52,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
 
     if (picked != null) {
       setState(() {
-        _avatarFile = File(picked.path);
+        _newAvatarFile = File(picked.path);
       });
     }
   }
@@ -45,7 +61,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
     final name = _nameCtrl.text.trim();
     if (name.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Escribe tu nombre para continuar')),
+        const SnackBar(content: Text('El nombre no puede estar vacío')),
       );
       return;
     }
@@ -64,28 +80,27 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
       setState(() => _isSaving = true);
 
       final uid = firebaseUser.uid;
-      String? avatarUrl;
+      String? avatarUrl = _currentAvatarUrl;
 
-      if (_avatarFile != null) {
+      // Si el usuario eligió una nueva foto, la subimos
+      if (_newAvatarFile != null) {
         final storageRef = FirebaseStorage.instance
             .ref()
             .child('users')
             .child(uid)
             .child('avatar.jpg');
 
-        await storageRef.putFile(_avatarFile!);
+        await storageRef.putFile(_newAvatarFile!);
         avatarUrl = await storageRef.getDownloadURL();
       }
 
       final now = DateTime.now();
 
       final updates = <String, dynamic>{
-        'uid': uid,
         'username': name,
-        'email': firebaseUser.email ?? '',
+        'bio': _bioCtrl.text.trim().isEmpty ? null : _bioCtrl.text.trim(),
         'profileImageUrl': avatarUrl,
         'lastActive': now,
-        // si no existe, lo crea; si existe, solo mergea
       };
 
       await FirebaseFirestore.instance
@@ -94,10 +109,10 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
           .set(updates, SetOptions(merge: true));
 
       if (!mounted) return;
-      Navigator.pop(context, true); // devolvemos true para refrescar
+      Navigator.pop(context, true); // true = hubo cambios
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error al guardar perfil: $e')),
+        SnackBar(content: Text('Error al guardar cambios: $e')),
       );
     } finally {
       if (mounted) {
@@ -108,16 +123,24 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final avatar = _avatarFile;
+    final avatarFile = _newAvatarFile;
+    final avatarUrl = _currentAvatarUrl;
     final String initialLetter =
         _nameCtrl.text.isNotEmpty ? _nameCtrl.text[0].toUpperCase() : "P";
+
+    ImageProvider? avatarImage;
+    if (avatarFile != null) {
+      avatarImage = FileImage(avatarFile);
+    } else if (avatarUrl != null && avatarUrl.isNotEmpty) {
+      avatarImage = NetworkImage(avatarUrl);
+    }
 
     return Scaffold(
       appBar: AppBar(
         backgroundColor: primary,
         elevation: 0,
         title: const Text(
-          "Configura tu perfil",
+          "Editar perfil",
           style: TextStyle(
             fontSize: 20,
             fontWeight: FontWeight.w600,
@@ -125,7 +148,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
         ),
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
         child: Column(
           children: [
             GestureDetector(
@@ -147,9 +170,8 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                     CircleAvatar(
                       radius: 56,
                       backgroundColor: primary,
-                      backgroundImage:
-                          avatar != null ? FileImage(avatar) : null,
-                      child: avatar == null
+                      backgroundImage: avatarImage,
+                      child: avatarImage == null
                           ? Text(
                               initialLetter,
                               style: const TextStyle(
@@ -186,7 +208,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
             const Align(
               alignment: Alignment.centerLeft,
               child: Text(
-                "Tu nombre",
+                "Nombre",
                 style: TextStyle(
                   fontWeight: FontWeight.w600,
                   color: Colors.black54,
@@ -198,7 +220,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
             TextField(
               controller: _nameCtrl,
               decoration: InputDecoration(
-                hintText: "Cómo te verán tus contactos",
+                hintText: "Tu nombre visible",
                 filled: true,
                 fillColor: Colors.grey[100],
                 border: OutlineInputBorder(
@@ -211,6 +233,38 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                 ),
               ),
               onChanged: (_) => setState(() {}),
+            ),
+
+            const SizedBox(height: 24),
+
+            const Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                "Bio",
+                style: TextStyle(
+                  fontWeight: FontWeight.w600,
+                  color: Colors.black54,
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
+
+            TextField(
+              controller: _bioCtrl,
+              maxLines: 3,
+              decoration: InputDecoration(
+                hintText: "Cuenta algo sobre ti (opcional)",
+                filled: true,
+                fillColor: Colors.grey[100],
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide: BorderSide.none,
+                ),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 14,
+                ),
+              ),
             ),
 
             const SizedBox(height: 40),
@@ -236,7 +290,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                         ),
                       )
                     : const Text(
-                        "Guardar",
+                        "Guardar cambios",
                         style: TextStyle(fontSize: 16, color: Colors.white),
                       ),
               ),

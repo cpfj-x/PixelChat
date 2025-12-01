@@ -26,7 +26,7 @@ class _ChatInfoScreenState extends State<ChatInfoScreen> {
   bool _isMuted = false;
   bool _loadingMembers = true;
 
-  List<app_user.User> _members = [];
+  List<app_user.AppUser> _members = [];
 
   @override
   void initState() {
@@ -38,7 +38,7 @@ class _ChatInfoScreenState extends State<ChatInfoScreen> {
 
   Future<void> _loadMembers() async {
     try {
-      List<app_user.User> users = [];
+      List<app_user.AppUser> users = [];
 
       for (String uid in editableChat.memberIds) {
         final user = await _authService.getUserById(uid);
@@ -233,7 +233,7 @@ class _ChatInfoScreenState extends State<ChatInfoScreen> {
     );
   }
 
-  Widget _memberTile(app_user.User user) {
+  Widget _memberTile(app_user.AppUser user) {
     return ListTile(
       leading: CircleAvatar(
         backgroundColor: const Color(0xFF7A5AF8),

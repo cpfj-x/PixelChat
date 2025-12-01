@@ -80,20 +80,15 @@ class StorageService {
   // 🔥 SUBIR FOTO DE PERFIL
   // ============================================================
   Future<String> uploadProfileImage({
-    required String userId,
-    required File file,
-  }) async {
+    required String uid,
+    required File imageFile,
+    }) async {
     try {
-      final compressed = await _compressImage(file);
-
-      final ref = _storage
-          .ref()
-          .child('users/$userId/profile.jpg');
-
-      await ref.putFile(compressed);
+      final ref = _storage.ref().child("users/$uid/avatar.jpg");
+      await ref.putFile(imageFile);
       return await ref.getDownloadURL();
     } catch (e) {
-      throw Exception("Error al subir imagen de perfil: $e");
+      throw Exception("Error subiendo avatar: $e");
     }
   }
 
