@@ -21,7 +21,7 @@ void main() async {
 }
 
 class PixelChatApp extends StatelessWidget {
-  const PixelChatApp({Key? key}) : super(key: key);
+  const PixelChatApp({super.key});
 
   static const primary = Color(0xFF7A5AF8);
 
@@ -63,7 +63,7 @@ class PixelChatApp extends StatelessWidget {
               style: ElevatedButton.styleFrom(
                 backgroundColor: primary,
                 foregroundColor: Colors.white,
-                padding: EdgeInsets.symmetric(
+                padding: const EdgeInsets.symmetric(
                   horizontal: 32,
                   vertical: 16,
                 ),
@@ -94,7 +94,7 @@ class PixelChatApp extends StatelessWidget {
               seedColor: primary,
               brightness: Brightness.dark,
               background: Colors.black,
-              surface: Color(0xFF0A0A0A),
+              surface: const Color(0xFF0A0A0A),
             ),
 
             scaffoldBackgroundColor: Colors.black,
@@ -110,7 +110,7 @@ class PixelChatApp extends StatelessWidget {
               style: ElevatedButton.styleFrom(
                 backgroundColor: primary,
                 foregroundColor: Colors.white,
-                padding: EdgeInsets.symmetric(
+                padding: const EdgeInsets.symmetric(
                   horizontal: 32,
                   vertical: 16,
                 ),

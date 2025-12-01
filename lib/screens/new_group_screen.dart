@@ -51,21 +51,21 @@ class _NewGroupScreenState extends State<NewGroupScreen> {
     setState(() => _isLoading = true);
 
     try {
-      final memberIds = [_currentUser!.uid];
+      final memberIds = [_currentUser.uid];
 
       late Chat chat;
 
       if (widget.chatType == "group") {
         chat = await _chatService.createGroupChat(
           groupName: name,
-          createdBy: _currentUser!.uid,
+          createdBy: _currentUser.uid,
           memberIds: memberIds,
           description: desc.isNotEmpty ? desc : null,
         );
       } else {
         chat = await _chatService.createCommunity(
           communityName: name,
-          createdBy: _currentUser!.uid,
+          createdBy: _currentUser.uid,
           memberIds: memberIds,
           description: desc.isNotEmpty ? desc : null,
         );

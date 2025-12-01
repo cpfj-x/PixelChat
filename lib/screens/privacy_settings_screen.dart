@@ -149,7 +149,7 @@ class _PrivacySettingsScreenState extends State<PrivacySettingsScreen> {
           : null,
       trailing: Switch(
         value: value,
-        activeColor: primary,
+        activeThumbColor: primary,
         onChanged: onChanged,
       ),
     );

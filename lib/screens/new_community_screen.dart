@@ -5,7 +5,6 @@ import 'package:image_picker/image_picker.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 import '../services/chat_service.dart';
-import '../models/chat_model.dart';
 
 class NewCommunityScreen extends StatefulWidget {
   const NewCommunityScreen({super.key});

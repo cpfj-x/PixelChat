@@ -7,7 +7,7 @@ import 'chat_detail_screen.dart';
 import 'new_group_screen.dart';
 
 class GroupsScreen extends StatefulWidget {
-  const GroupsScreen({Key? key}) : super(key: key);
+  const GroupsScreen({super.key});
 
   @override
   State<GroupsScreen> createState() => _GroupsScreenState();

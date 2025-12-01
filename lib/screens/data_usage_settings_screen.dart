@@ -125,7 +125,7 @@ class _DataUsageSettingsScreenState extends State<DataUsageSettingsScreen> {
           : null,
       trailing: Switch(
         value: value,
-        activeColor: primary,
+        activeThumbColor: primary,
         onChanged: onChanged,
       ),
     );

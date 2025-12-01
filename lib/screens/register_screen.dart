@@ -73,7 +73,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         content: Text(message),
         actions: [
           TextButton(
-            child: Text("OK", style: TextStyle(color: primary)),
+            child: const Text("OK", style: TextStyle(color: primary)),
             onPressed: () => Navigator.pop(context),
           ),
         ],
@@ -183,9 +183,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 child: GestureDetector(
                   onTap: () => Navigator.pop(context),
                   child: RichText(
-                    text: TextSpan(
+                    text: const TextSpan(
                       text: '¿Ya tienes cuenta? ',
-                      style: const TextStyle(color: Colors.black),
+                      style: TextStyle(color: Colors.black),
                       children: [
                         TextSpan(
                           text: 'Inicia sesión',

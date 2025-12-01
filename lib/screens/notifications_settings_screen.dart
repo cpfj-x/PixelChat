@@ -133,7 +133,7 @@ class _NotificationsSettingsScreenState
           : null,
       trailing: Switch(
         value: value,
-        activeColor: primary,
+        activeThumbColor: primary,
         onChanged: onChanged,
       ),
     );

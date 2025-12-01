@@ -20,7 +20,7 @@ class _CallScreenState extends State<CallScreen> {
   final _remoteRenderer = RTCVideoRenderer();
 
   bool _micMuted = false;
-  bool _cameraOn = true;
+  final bool _cameraOn = true;
 
   @override
   void initState() {
@@ -167,10 +167,10 @@ class _CallScreenState extends State<CallScreen> {
 
   // ------------ FONDO PARA LLAMADA DE VOZ ------------
   Widget _buildVoiceCallBackground() {
-    return Center(
+    return const Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
-        children: const [
+        children: [
           Icon(Icons.person, size: 140, color: Colors.white24),
           SizedBox(height: 20),
           Text(

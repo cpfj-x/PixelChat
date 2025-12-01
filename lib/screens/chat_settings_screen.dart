@@ -114,7 +114,7 @@ class _ChatSettingsScreenState extends State<ChatSettingsScreen> {
           : null,
       trailing: Switch(
         value: value,
-        activeColor: primary,
+        activeThumbColor: primary,
         onChanged: onChanged,
       ),
     );

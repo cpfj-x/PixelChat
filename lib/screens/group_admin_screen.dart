@@ -204,7 +204,7 @@ class _GroupAdminScreenState extends State<GroupAdminScreen> {
                 const SizedBox(height: 10),
 
                 _sectionTitle("Miembros (${members.length})"),
-                ...members.map((u) => _memberTile(u, isCreator)).toList(),
+                ...members.map((u) => _memberTile(u, isCreator)),
 
                 const SizedBox(height: 40),
               ],

@@ -82,14 +82,14 @@ class _NewChatScreenState extends State<NewChatScreen> {
 
     try {
       final currentUserData =
-          await _authService.getUserById(_currentUser!.uid);
+          await _authService.getUserById(_currentUser.uid);
 
       if (currentUserData == null) {
         throw Exception('No se pudo cargar tu información.');
       }
 
       final chat = await _chatService.createDirectChat(
-        userId1: _currentUser!.uid,
+        userId1: _currentUser.uid,
         userId2: selectedUser.uid,
         user1Name: currentUserData.username,
         user2Name: selectedUser.username,

@@ -199,7 +199,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
     ImageProvider? avatarImage;
     if (hasAvatar) {
-      avatarImage = NetworkImage(user!.profileImageUrl!);
+      avatarImage = NetworkImage(user.profileImageUrl!);
     }
 
     final initialLetter =
@@ -246,7 +246,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ],
               ),
             ),
-            Icon(Icons.qr_code_2, size: 28, color: primary),
+            const Icon(Icons.qr_code_2, size: 28, color: primary),
           ],
         ),
       ),

@@ -181,7 +181,7 @@ class _PhoneVerificationScreenState extends State<PhoneVerificationScreen> {
               Center(
                 child: GestureDetector(
                   onTap: _skipPhoneVerification,
-                  child: Text(
+                  child: const Text(
                     "Saltar",
                     style: TextStyle(
                       color: primary,
@@ -273,7 +273,7 @@ class _PhoneVerificationScreenState extends State<PhoneVerificationScreen> {
                 }
               });
             },
-            child: Text(
+            child: const Text(
               "Reenviar código",
               style: TextStyle(
                 color: primary,

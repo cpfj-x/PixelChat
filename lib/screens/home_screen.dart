@@ -253,9 +253,7 @@ Widget _chatList(BuildContext context, List<Chat> chats) {
           style: const TextStyle(color: Colors.grey),
         ),
         trailing: Text(
-          chat.lastMessageTime != null
-              ? "${chat.lastMessageTime!.day}/${chat.lastMessageTime!.month}"
-              : "",
+          "${chat.lastMessageTime!.day}/${chat.lastMessageTime!.month}",
           style: const TextStyle(fontSize: 12, color: Colors.grey),
         ),
       );
