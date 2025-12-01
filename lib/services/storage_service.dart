@@ -8,16 +8,16 @@ class StorageService {
   final FirebaseStorage _storage = FirebaseStorage.instance;
 
   // ============================================================
-  // 🔥 Utilidad: Comprimir imagen (JPEG 85%)
+  // 🔥 UTILIDAD: Comprimir imagen (JPEG 70%)
   // ============================================================
   Future<File> _compressImage(File file) async {
     try {
       final filePath = file.absolute.path;
 
-      // Obtener extensión original
-      final lastIndex = filePath.lastIndexOf(RegExp(r'.jp'));
-      final outPath = filePath.substring(0, lastIndex) +
-          '_compressed.jpg';
+      final outPath = filePath.replaceAll(
+        RegExp(r'\.(jpg|jpeg|png)$'),
+        '_compressed.jpg',
+      );
 
       final result = await FlutterImageCompress.compressAndGetFile(
         filePath,
@@ -26,20 +26,14 @@ class StorageService {
         format: CompressFormat.jpeg,
       );
 
-      if (result == null) {
-        // Si falla la compresión, devolvemos el archivo original
-        return file;
-      }
-
-      return File(result.path);
-    } catch (e) {
-      // Si ocurre error, usamos imagen original
-      return file;
+      return result != null ? File(result.path) : file;
+    } catch (_) {
+      return file; // fallback
     }
   }
 
   // ============================================================
-  // 🔥 Subir imagen de mensaje (con compresión)
+  // 🔥 SUBIR IMAGEN DE MENSAJE (con compresión)
   // ============================================================
   Future<String> uploadMessageImage({
     required String chatId,
@@ -62,7 +56,7 @@ class StorageService {
   }
 
   // ============================================================
-  // 🔥 Subir múltiples imágenes
+  // 🔥 SUBIR MÚLTIPLES IMÁGENES
   // ============================================================
   Future<List<String>> uploadMultipleImages({
     required String chatId,
@@ -83,7 +77,7 @@ class StorageService {
   }
 
   // ============================================================
-  // 🔥 Subir foto de perfil
+  // 🔥 SUBIR FOTO DE PERFIL
   // ============================================================
   Future<String> uploadProfileImage({
     required String userId,
@@ -97,7 +91,6 @@ class StorageService {
           .child('users/$userId/profile.jpg');
 
       await ref.putFile(compressed);
-
       return await ref.getDownloadURL();
     } catch (e) {
       throw Exception("Error al subir imagen de perfil: $e");
@@ -105,7 +98,7 @@ class StorageService {
   }
 
   // ============================================================
-  // 🔥 Subir foto de grupo / comunidad
+  // 🔥 SUBIR FOTO DE GRUPO O COMUNIDAD
   // ============================================================
   Future<String> uploadChatImage({
     required String chatId,
@@ -119,7 +112,6 @@ class StorageService {
           .child('chats/$chatId/icon.jpg');
 
       await ref.putFile(compressed);
-
       return await ref.getDownloadURL();
     } catch (e) {
       throw Exception("Error al subir imagen del grupo: $e");
@@ -127,7 +119,7 @@ class StorageService {
   }
 
   // ============================================================
-  // 🔥 Subir video + thumbnail (WhatsApp style)
+  // 🔥 SUBIR VIDEO + THUMBNAIL (WhatsApp style)
   // ============================================================
   Future<Map<String, String>> uploadVideo({
     required String chatId,
@@ -136,14 +128,15 @@ class StorageService {
     try {
       final videoId = DateTime.now().millisecondsSinceEpoch.toString();
 
-      // Subir video
-      final videoRef =
-          _storage.ref().child('messages/$chatId/videos/$videoId.mp4');
+      // 1) Subir video
+      final videoRef = _storage
+          .ref()
+          .child('messages/$chatId/videos/$videoId.mp4');
 
       await videoRef.putFile(videoFile);
       final videoUrl = await videoRef.getDownloadURL();
 
-      // Crear thumbnail
+      // 2) Generar thumbnail
       final thumbPath = await VideoThumbnail.thumbnailFile(
         video: videoFile.path,
         imageFormat: ImageFormat.JPEG,
@@ -151,19 +144,19 @@ class StorageService {
         quality: 70,
       );
 
-      String? thumbUrl;
+      String? thumbnailUrl;
       if (thumbPath != null) {
-        final thumbFile = File(thumbPath);
-        final refThumb = _storage
+        final thumbRef = _storage
             .ref()
             .child('messages/$chatId/thumbnails/$videoId.jpg');
-        await refThumb.putFile(thumbFile);
-        thumbUrl = await refThumb.getDownloadURL();
+
+        await thumbRef.putFile(File(thumbPath));
+        thumbnailUrl = await thumbRef.getDownloadURL();
       }
 
       return {
         "videoUrl": videoUrl,
-        "thumbnailUrl": thumbUrl ?? "",
+        "thumbnailUrl": thumbnailUrl ?? "",
       };
     } catch (e) {
       throw Exception("Error al subir video: $e");
@@ -171,17 +164,27 @@ class StorageService {
   }
 
   // ============================================================
-  // 🔥 Subir audio (WhatsApp voice notes)
+  // ⚠️ SOLUCIÓN AL ERROR: Añadimos este alias
+  // ============================================================
+  Future<Map<String, String>> uploadMessageVideo({
+    required String chatId,
+    required File videoFile,
+  }) async {
+    return await uploadVideo(chatId: chatId, videoFile: videoFile);
+  }
+
+  // ============================================================
+  // 🔥 SUBIR AUDIO (notas de voz estilo WhatsApp)
   // ============================================================
   Future<String> uploadAudio({
     required String chatId,
     required File audioFile,
   }) async {
     try {
-      final audioId = DateTime.now().millisecondsSinceEpoch.toString();
+      final id = DateTime.now().millisecondsSinceEpoch.toString();
 
       final ref =
-          _storage.ref().child('messages/$chatId/audio/$audioId.m4a');
+          _storage.ref().child('messages/$chatId/audio/$id.m4a');
 
       await ref.putFile(audioFile);
 
@@ -192,24 +195,22 @@ class StorageService {
   }
 
   // ============================================================
-  // 🔥 Eliminar archivo
+  // 🔥 ELIMINAR ARCHIVO
   // ============================================================
   Future<void> deleteFile(String url) async {
     try {
-      final ref = _storage.refFromURL(url);
-      await ref.delete();
+      await _storage.refFromURL(url).delete();
     } catch (e) {
       throw Exception("Error al eliminar archivo: $e");
     }
   }
 
   // ============================================================
-  // 🔥 Obtener URL (no suele usarse, pero útil)
+  // 🔥 Obtener URL pública
   // ============================================================
   Future<String> getDownloadUrl(String path) async {
     try {
-      final ref = _storage.ref().child(path);
-      return await ref.getDownloadURL();
+      return await _storage.ref().child(path).getDownloadURL();
     } catch (e) {
       throw Exception("Error al obtener URL: $e");
     }

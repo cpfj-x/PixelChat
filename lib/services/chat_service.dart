@@ -1,4 +1,5 @@
 // lib/services/chat_service.dart
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/chat_model.dart';
 import '../models/message_model.dart';
@@ -6,9 +7,9 @@ import '../models/message_model.dart';
 class ChatService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  // ---------------------------------------------------------------------------
+  // ===========================================================================
   // CREAR CHAT DIRECTO (1 a 1)
-  // ---------------------------------------------------------------------------
+  // ===========================================================================
   Future<Chat> createDirectChat({
     required String userId1,
     required String userId2,
@@ -16,11 +17,9 @@ class ChatService {
     required String user2Name,
   }) async {
     try {
-      // Crear ID único ordenando los IDs
       final ids = [userId1, userId2]..sort();
       final chatId = '${ids[0]}_${ids[1]}';
 
-      // Verificar si ya existe
       final existing = await _firestore.collection('chats').doc(chatId).get();
       if (existing.exists) {
         return Chat.fromMap(existing.data() as Map<String, dynamic>, chatId);
@@ -44,9 +43,9 @@ class ChatService {
     }
   }
 
-  // ---------------------------------------------------------------------------
+  // ===========================================================================
   // CREAR GRUPO
-  // ---------------------------------------------------------------------------
+  // ===========================================================================
   Future<Chat> createGroupChat({
     required String groupName,
     required String createdBy,
@@ -77,9 +76,9 @@ class ChatService {
     }
   }
 
-  // ---------------------------------------------------------------------------
+  // ===========================================================================
   // CREAR COMUNIDAD
-  // ---------------------------------------------------------------------------
+  // ===========================================================================
   Future<Chat> createCommunity({
     required String communityName,
     required String createdBy,
@@ -110,9 +109,9 @@ class ChatService {
     }
   }
 
-  // ---------------------------------------------------------------------------
+  // ===========================================================================
   // OBTENER CHATS DEL USUARIO
-  // ---------------------------------------------------------------------------
+  // ===========================================================================
   Stream<List<Chat>> getUserChats(String userId) {
     return _firestore
         .collection('chats')
@@ -125,9 +124,9 @@ class ChatService {
     });
   }
 
-  // ---------------------------------------------------------------------------
+  // ===========================================================================
   // OBTENER CHAT POR ID
-  // ---------------------------------------------------------------------------
+  // ===========================================================================
   Future<Chat?> getChatById(String chatId) async {
     try {
       final doc = await _firestore.collection('chats').doc(chatId).get();
@@ -138,85 +137,126 @@ class ChatService {
     }
   }
 
-  // ---------------------------------------------------------------------------
-  // GESTIÓN DE MIEMBROS
-  // ---------------------------------------------------------------------------
+  // ===========================================================================
+  // MIEMBROS
+  // ===========================================================================
   Future<void> addMemberToChat({
     required String chatId,
     required String userId,
   }) async {
-    try {
-      await _firestore.collection('chats').doc(chatId).update({
-        'memberIds': FieldValue.arrayUnion([userId]),
-      });
-    } catch (e) {
-      throw Exception('Error al agregar miembro: $e');
-    }
+    await _firestore.collection('chats').doc(chatId).update({
+      'memberIds': FieldValue.arrayUnion([userId]),
+    });
   }
 
   Future<void> removeMemberFromChat({
     required String chatId,
     required String userId,
   }) async {
-    try {
-      await _firestore.collection('chats').doc(chatId).update({
-        'memberIds': FieldValue.arrayRemove([userId]),
-      });
-    } catch (e) {
-      throw Exception('Error al remover miembro: $e');
-    }
+    await _firestore.collection('chats').doc(chatId).update({
+      'memberIds': FieldValue.arrayRemove([userId]),
+    });
   }
 
-  // ---------------------------------------------------------------------------
-  // ENVIAR MENSAJE  ✅ (lo que usa ChatDetailScreen)
-  // ---------------------------------------------------------------------------
+  // ===========================================================================
+  // ENVIAR MENSAJE (texto / imgs / video / audio / reply)
+  // ===========================================================================
   Future<Message> sendMessage({
     required String chatId,
     required String senderId,
     required String senderName,
     required String content,
-    String? senderImageUrl,
     List<String>? imageUrls,
+    String? videoUrl,
+    String? videoThumbnail,
+    String? audioUrl,
     String? replyToMessageId,
   }) async {
     try {
-      final messageRef = _firestore
-          .collection('chats')
-          .doc(chatId)
-          .collection('messages')
-          .doc();
+      final ref =
+          _firestore.collection("chats").doc(chatId).collection("messages");
 
-      final message = Message(
-        id: messageRef.id,
+      String? replyText;
+      if (replyToMessageId != null) {
+        final doc = await ref.doc(replyToMessageId).get();
+        if (doc.exists) replyText = doc["content"];
+      }
+
+      final msgId = ref.doc().id;
+
+      final msg = Message(
+        id: msgId,
+        chatId: chatId,
         senderId: senderId,
         senderName: senderName,
-        senderImageUrl: senderImageUrl,
         content: content,
-        imageUrls: imageUrls,
         timestamp: DateTime.now(),
-        chatId: chatId,
-        isRead: false,
+        imageUrls: imageUrls,
+        videoUrl: videoUrl,
+        videoThumbnail: videoThumbnail,
+        audioUrl: audioUrl,
         replyToMessageId: replyToMessageId,
+        replyToMessageContent: replyText,
       );
 
-      await messageRef.set(message.toMap());
+      await ref.doc(msgId).set(msg.toMap());
 
-      await _firestore.collection('chats').doc(chatId).update({
-        'lastMessage': content,
-        'lastMessageSenderId': senderId,
-        'lastMessageTime': DateTime.now(),
+      await _firestore.collection("chats").doc(chatId).update({
+        "lastMessage": content,
+        "lastMessageTime": DateTime.now(),
+        "lastMessageSenderId": senderId,
       });
 
-      return message;
+      return msg;
     } catch (e) {
       throw Exception("Error al enviar mensaje: $e");
     }
   }
 
+  // ===========================================================================
+  // TYPING INDICATOR
+  // ===========================================================================
+  Future<void> setTypingStatus({
+    required String chatId,
+    required String userId,
+    required bool isTyping,
+  }) async {
+    await _firestore
+        .collection("chats")
+        .doc(chatId)
+        .collection("typing")
+        .doc(userId)
+        .set({"isTyping": isTyping});
+  }
 
-  // ---------------------------------------------------------------------------
-  // OBTENER MENSAJES DEL CHAT  ✅ (lo que usa ChatDetailScreen)
-  // ---------------------------------------------------------------------------
+  Stream<bool> listenTypingStatus({
+    required String chatId,
+    required String otherUserId,
+  }) {
+    return _firestore
+        .collection("chats")
+        .doc(chatId)
+        .collection("typing")
+        .doc(otherUserId)
+        .snapshots()
+        .map((snap) => snap.data()?["isTyping"] == true);
+  }
+
+  Future<void> clearTyping({
+    required String chatId,
+    required String userId,
+  }) async {
+    await _firestore
+        .collection("chats")
+        .doc(chatId)
+        .collection("typing")
+        .doc(userId)
+        .set({"isTyping": false});
+  }
+
+  // ===========================================================================
+  // OBTENER MENSAJES
+  // ===========================================================================
   Stream<List<Message>> getChatMessages(String chatId) {
     return _firestore
         .collection('chats')
@@ -231,67 +271,54 @@ class ChatService {
     });
   }
 
-  // ---------------------------------------------------------------------------
-  // LEÍDO / ELIMINAR / SILENCIAR / BUSCAR
-  // ---------------------------------------------------------------------------
+  // ===========================================================================
+  // UTILIDADES: leer / borrar / silenciar
+  // ===========================================================================
   Future<void> markMessageAsRead({
     required String chatId,
     required String messageId,
   }) async {
-    try {
-      await _firestore
-          .collection('chats')
-          .doc(chatId)
-          .collection('messages')
-          .doc(messageId)
-          .update({'isRead': true});
-    } catch (e) {
-      throw Exception('Error al marcar mensaje como leído: $e');
-    }
+    await _firestore
+        .collection('chats')
+        .doc(chatId)
+        .collection('messages')
+        .doc(messageId)
+        .update({'isRead': true});
   }
 
   Future<void> deleteMessage({
     required String chatId,
     required String messageId,
   }) async {
-    try {
-      await _firestore
-          .collection('chats')
-          .doc(chatId)
-          .collection('messages')
-          .doc(messageId)
-          .delete();
-    } catch (e) {
-      throw Exception('Error al eliminar mensaje: $e');
-    }
+    await _firestore
+        .collection('chats')
+        .doc(chatId)
+        .collection('messages')
+        .doc(messageId)
+        .delete();
   }
 
   Future<void> toggleMuteChat({
     required String chatId,
     required bool isMuted,
   }) async {
-    try {
-      await _firestore.collection('chats').doc(chatId).update({
-        'isMuted': isMuted,
-      });
-    } catch (e) {
-      throw Exception('Error al silenciar chat: $e');
-    }
+    await _firestore.collection('chats').doc(chatId).update({
+      'isMuted': isMuted,
+    });
   }
 
+  // ===========================================================================
+  // BUSCAR CHATS
+  // ===========================================================================
   Future<List<Chat>> searchChats(String query) async {
-    try {
-      final snapshot = await _firestore
-          .collection('chats')
-          .where('name', isGreaterThanOrEqualTo: query)
-          .where('name', isLessThan: '${query}z')
-          .get();
+    final snapshot = await _firestore
+        .collection('chats')
+        .where('name', isGreaterThanOrEqualTo: query)
+        .where('name', isLessThan: '${query}z')
+        .get();
 
-      return snapshot.docs
-          .map((doc) => Chat.fromMap(doc.data(), doc.id))
-          .toList();
-    } catch (e) {
-      throw Exception('Error al buscar chats: $e');
-    }
+    return snapshot.docs
+        .map((doc) => Chat.fromMap(doc.data(), doc.id))
+        .toList();
   }
 }
