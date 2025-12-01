@@ -16,10 +16,11 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  final ChatService _chatService = ChatService();
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
   int _currentIndex = 0;
+  bool _isSearching = false;
+  final TextEditingController _searchController = TextEditingController();
 
   static const Color primary = Color(0xFF7A5AF8);
 
@@ -28,9 +29,9 @@ class _HomeScreenState extends State<HomeScreen> {
     final uid = _auth.currentUser!.uid;
 
     final tabs = [
-      _ChatsTab(uid: uid),
-      _GroupsTab(uid: uid),
-      const ExploreCommunitiesScreen(),
+      _ChatsTab(uid: uid, query: _searchController.text),
+      _GroupsTab(uid: uid, query: _searchController.text),
+      ExploreCommunitiesScreen(query: _searchController.text),
       const SettingsScreen(),
     ];
 
@@ -41,20 +42,47 @@ class _HomeScreenState extends State<HomeScreen> {
       appBar: AppBar(
         backgroundColor: primary,
         elevation: 0,
-        title: const Text(
-          "PixelChat",
-          style: TextStyle(fontWeight: FontWeight.w600),
+
+        title: AnimatedSwitcher(
+          duration: const Duration(milliseconds: 200),
+          child: _isSearching
+              ? TextField(
+                  controller: _searchController,
+                  autofocus: true,
+                  style: const TextStyle(color: Colors.white, fontSize: 18),
+                  decoration: const InputDecoration(
+                    hintText: "Buscar...",
+                    hintStyle: TextStyle(color: Colors.white70),
+                    border: InputBorder.none,
+                  ),
+                  onChanged: (_) => setState(() {}),
+                )
+              : Text(
+                  _currentIndex == 2
+                      ? "Explorar Comunidades"
+                      : "PixelChat",
+                  style: const TextStyle(fontWeight: FontWeight.w600),
+                ),
         ),
+
         actions: [
-          if (_currentIndex == 0 || _currentIndex == 1)
+          if (_currentIndex == 0 || _currentIndex == 1 || _currentIndex == 2)
             IconButton(
-              icon: const Icon(Icons.search),
-              onPressed: () {},
+              icon: Icon(
+                _isSearching ? Icons.close : Icons.search,
+                color: Colors.white,
+              ),
+              onPressed: () {
+                setState(() {
+                  if (_isSearching) _searchController.clear();
+                  _isSearching = !_isSearching;
+                });
+              },
             ),
         ],
       ),
 
-      // ---------------------- BODY CON TRANSICIÓN ----------------------
+      // ---------------------- BODY ----------------------
       body: AnimatedSwitcher(
         duration: const Duration(milliseconds: 200),
         child: tabs[_currentIndex],
@@ -107,12 +135,16 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 }
 
+//
 // =======================================================
 //                     CHATS TAB
 // =======================================================
+//
 class _ChatsTab extends StatelessWidget {
   final String uid;
-  const _ChatsTab({required this.uid});
+  final String query;
+
+  const _ChatsTab({required this.uid, required this.query});
 
   @override
   Widget build(BuildContext context) {
@@ -123,11 +155,15 @@ class _ChatsTab extends StatelessWidget {
           return const Center(child: CircularProgressIndicator());
         }
 
-        final chats =
-            snap.data!.where((c) => c.type == ChatType.direct).toList();
+        final chats = snap.data!
+            .where((c) =>
+                c.type == ChatType.direct &&
+                (query.isEmpty ||
+                    c.name.toLowerCase().contains(query.toLowerCase())))
+            .toList();
 
         if (chats.isEmpty) {
-          return const Center(child: Text("No tienes chats aún"));
+          return const Center(child: Text("No hay resultados"));
         }
 
         return _chatList(context, chats);
@@ -136,12 +172,16 @@ class _ChatsTab extends StatelessWidget {
   }
 }
 
+//
 // =======================================================
 //                     GROUPS TAB
 // =======================================================
+//
 class _GroupsTab extends StatelessWidget {
   final String uid;
-  const _GroupsTab({required this.uid});
+  final String query;
+
+  const _GroupsTab({required this.uid, required this.query});
 
   @override
   Widget build(BuildContext context) {
@@ -152,11 +192,15 @@ class _GroupsTab extends StatelessWidget {
           return const Center(child: CircularProgressIndicator());
         }
 
-        final groups =
-            snap.data!.where((c) => c.type == ChatType.group).toList();
+        final groups = snap.data!
+            .where((c) =>
+                c.type == ChatType.group &&
+                (query.isEmpty ||
+                    c.name.toLowerCase().contains(query.toLowerCase())))
+            .toList();
 
         if (groups.isEmpty) {
-          return const Center(child: Text("No perteneces a ningún grupo"));
+          return const Center(child: Text("No hay resultados"));
         }
 
         return _chatList(context, groups);
@@ -165,9 +209,11 @@ class _GroupsTab extends StatelessWidget {
   }
 }
 
+//
 // =======================================================
-//                   LISTA COMPARTIDA
+//                     LISTA COMPARTIDA
 // =======================================================
+//
 Widget _chatList(BuildContext context, List<Chat> chats) {
   return ListView.separated(
     itemCount: chats.length,
