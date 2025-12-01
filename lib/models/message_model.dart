@@ -46,10 +46,8 @@ class Message {
       senderName: map['senderName'] ?? '',
       senderImageUrl: map['senderImageUrl'],
       content: map['content'] ?? '',
-      imageUrls: map['imageUrls'] != null
-          ? List<String>.from(map['imageUrls'])
-          : null,
-      timestamp: _toDate(map['timestamp']),
+      imageUrls: List<String>.from(map['imageUrls'] ?? []),
+      timestamp: map['timestamp']?.toDate() ?? DateTime.now(),
       chatId: map['chatId'] ?? '',
       isRead: map['isRead'] ?? false,
       replyToMessageId: map['replyToMessageId'],

@@ -177,6 +177,7 @@ class ChatService {
     required String content,
     String? senderImageUrl,
     List<String>? imageUrls,
+    String? replyToMessageId,
   }) async {
     try {
       final messageRef = _firestore
@@ -195,6 +196,7 @@ class ChatService {
         timestamp: DateTime.now(),
         chatId: chatId,
         isRead: false,
+        replyToMessageId: replyToMessageId,
       );
 
       await messageRef.set(message.toMap());
@@ -207,9 +209,10 @@ class ChatService {
 
       return message;
     } catch (e) {
-      throw Exception('Error al enviar mensaje: $e');
+      throw Exception("Error al enviar mensaje: $e");
     }
   }
+
 
   // ---------------------------------------------------------------------------
   // OBTENER MENSAJES DEL CHAT  ✅ (lo que usa ChatDetailScreen)

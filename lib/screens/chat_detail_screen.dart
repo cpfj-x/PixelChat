@@ -2,19 +2,18 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:scrollable_positioned_list/scrollable_positioned_list.dart';
 
 import '../services/chat_service.dart';
 import '../services/storage_service.dart';
 import '../models/chat_model.dart';
 import '../models/message_model.dart';
+import 'chat_info_screen.dart';
 
 class ChatDetailScreen extends StatefulWidget {
   final Chat chat;
 
-  const ChatDetailScreen({
-    Key? key,
-    required this.chat,
-  }) : super(key: key);
+  const ChatDetailScreen({super.key, required this.chat});
 
   @override
   State<ChatDetailScreen> createState() => _ChatDetailScreenState();
@@ -27,11 +26,16 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
   final FirebaseAuth _firebaseAuth = FirebaseAuth.instance;
   final ImagePicker _picker = ImagePicker();
 
+  // Scroll avanzado
+  final ItemScrollController _scrollController = ItemScrollController();
+  final ItemPositionsListener _positionsListener = ItemPositionsListener.create();
+
   late Stream<List<Message>> _messagesStream;
 
   bool _isSending = false;
+  Message? _replyMessage;
 
-  static const Color primary = Color(0xFF7A5AF8); // TU MORADO
+  static const Color primary = Color(0xFF7A5AF8);
 
   @override
   void initState() {
@@ -45,9 +49,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     super.dispose();
   }
 
-  // -------------------------------------------------------------------------
-  // ENVIAR MENSAJE TEXTO
-  // -------------------------------------------------------------------------
+  // ================== ENVIAR MENSAJE TEXTO ==================
   Future<void> _sendTextMessage() async {
     String text = _messageController.text.trim();
     if (text.isEmpty) return;
@@ -63,8 +65,12 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
         senderId: user.uid,
         senderName: user.email ?? "Usuario",
         content: text,
+        replyToMessageId: _replyMessage?.id,
       );
+
       _messageController.clear();
+      _replyMessage = null;
+      _scrollToBottom();
     } catch (e) {
       _showError("Error al enviar texto: $e");
     } finally {
@@ -72,9 +78,20 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     }
   }
 
-  // -------------------------------------------------------------------------
-  // IMAGEN: GALERÍA + CÁMARA + PREVIEW WHATSAPP
-  // -------------------------------------------------------------------------
+  // ================== SCROLL AUTOMÁTICO ==================
+  void _scrollToBottom() {
+    Future.delayed(const Duration(milliseconds: 200), () {
+      if (_scrollController.isAttached) {
+        _scrollController.scrollTo(
+          index: 0,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+        );
+      }
+    });
+  }
+
+  // ================== IMAGENES ==================
   Future<void> _pickImage(ImageSource source) async {
     try {
       final picked = await _picker.pickImage(
@@ -84,7 +101,6 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
       );
 
       if (picked == null) return;
-
       final file = File(picked.path);
 
       bool? confirm = await _showPreviewDialog(file);
@@ -138,7 +154,11 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
         senderName: user.email ?? "Usuario",
         content: "[Imagen]",
         imageUrls: [imageUrl],
+        replyToMessageId: _replyMessage?.id,
       );
+
+      _replyMessage = null;
+      _scrollToBottom();
     } catch (e) {
       _showError("Error al subir imagen: $e");
     } finally {
@@ -146,23 +166,14 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     }
   }
 
-  // -------------------------------------------------------------------------
-  // FUTURO: VIDEO / AUDIO / REACCIONES
-  // -------------------------------------------------------------------------
-  void _unimplemented(String msg) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
-  }
-
-  // -------------------------------------------------------------------------
-  // UI PRINCIPAL
-  // -------------------------------------------------------------------------
+  // ================== UI PRINCIPAL ==================
   @override
   Widget build(BuildContext context) {
     final userId = _firebaseAuth.currentUser?.uid;
 
     return Scaffold(
       backgroundColor: Colors.grey[200],
-      appBar: _buildWhatsAppHeader(),
+      appBar: _buildHeader(),
       body: Column(
         children: [
           Expanded(
@@ -176,9 +187,10 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                 final messages = snapshot.data!;
                 messages.sort((a, b) => b.timestamp.compareTo(a.timestamp));
 
-                return ListView.builder(
+                return ScrollablePositionedList.builder(
+                  itemScrollController: _scrollController,
+                  itemPositionsListener: _positionsListener,
                   reverse: true,
-                  padding: const EdgeInsets.only(top: 10),
                   itemCount: messages.length,
                   itemBuilder: (_, i) {
                     final msg = messages[i];
@@ -186,6 +198,9 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
 
                     return GestureDetector(
                       onLongPress: () => _showMessageActions(msg),
+                      onHorizontalDragStart: (_) {
+                        setState(() => _replyMessage = msg);
+                      },
                       child: MessageBubble(message: msg, isMe: isMe),
                     );
                   },
@@ -194,16 +209,16 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
             ),
           ),
 
+          if (_replyMessage != null) _replyPreview(),
+
           _buildInputBar(),
         ],
       ),
     );
   }
 
-  // -------------------------------------------------------------------------
-  // APPBAR ESTILO WHATSAPP
-  // -------------------------------------------------------------------------
-  PreferredSizeWidget _buildWhatsAppHeader() {
+  // ================== HEADER ==================
+  PreferredSizeWidget _buildHeader() {
     return AppBar(
       backgroundColor: primary,
       elevation: 0,
@@ -215,41 +230,27 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
             child: Icon(Icons.person, color: Colors.white),
           ),
           const SizedBox(width: 12),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                widget.chat.name,
-                style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w600),
-              ),
-              const Text(
-                "en línea",
-                style: TextStyle(fontSize: 13, color: Colors.white70),
-              ),
-            ],
-          ),
+          Text(widget.chat.name,
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
         ],
       ),
       actions: [
         IconButton(
-          icon: const Icon(Icons.videocam),
-          onPressed: () => _unimplemented("Videollamada (pronto)"),
-        ),
-        IconButton(
-          icon: const Icon(Icons.call),
-          onPressed: () => _unimplemented("Llamada (pronto)"),
-        ),
-        IconButton(
           icon: const Icon(Icons.more_vert),
-          onPressed: () {},
-        ),
+          onPressed: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => ChatInfoScreen(chat: widget.chat),
+              ),
+            );
+          },
+        )
       ],
     );
   }
 
-  // -------------------------------------------------------------------------
-  // BARRA INFERIOR ESTILO WHATSAPP
-  // -------------------------------------------------------------------------
+  // ================== BARRA INFERIOR ==================
   Widget _buildInputBar() {
     return SafeArea(
       child: Container(
@@ -287,8 +288,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                 ? const SizedBox(
                     width: 40,
                     height: 40,
-                    child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
-                  )
+                    child: Center(child: CircularProgressIndicator(strokeWidth: 2)))
                 : GestureDetector(
                     onTap: _sendTextMessage,
                     child: Container(
@@ -307,9 +307,37 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     );
   }
 
-  // -------------------------------------------------------------------------
-  // MENÚ DE ADJUNTOS ESTILO WHATSAPP
-  // -------------------------------------------------------------------------
+  // ================== PREVIEW DE RESPUESTA ==================
+  Widget _replyPreview() {
+    return Container(
+      color: Colors.white,
+      padding: const EdgeInsets.all(8),
+      child: Row(
+        children: [
+          Container(
+            width: 4,
+            height: 40,
+            color: primary,
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              _replyMessage!.content,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(color: Colors.black87),
+            ),
+          ),
+          IconButton(
+            icon: const Icon(Icons.close),
+            onPressed: () => setState(() => _replyMessage = null),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ================== MENÚ DE ADJUNTOS ==================
   void _openAttachmentMenu() {
     showModalBottomSheet(
       context: context,
@@ -339,24 +367,6 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                 onTap: () {
                   Navigator.pop(context);
                   _pickImage(ImageSource.camera);
-                },
-              ),
-              _attachmentButton(
-                icon: Icons.videocam,
-                color: Colors.red,
-                label: "Video",
-                onTap: () {
-                  Navigator.pop(context);
-                  _unimplemented("Videos (pronto)");
-                },
-              ),
-              _attachmentButton(
-                icon: Icons.mic,
-                color: Colors.orange,
-                label: "Audio",
-                onTap: () {
-                  Navigator.pop(context);
-                  _unimplemented("Audio WA (pronto)");
                 },
               ),
             ],
@@ -389,9 +399,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     );
   }
 
-  // -------------------------------------------------------------------------
-  // OPCIONES AL MANTENER PRESIONADO MENSAJE
-  // -------------------------------------------------------------------------
+  // ================== ACCIONES DE MENSAJE ==================
   void _showMessageActions(Message message) {
     showModalBottomSheet(
       context: context,
@@ -400,9 +408,8 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const SizedBox(height: 12),
               const Text("Acciones", style: TextStyle(fontWeight: FontWeight.bold)),
-              const SizedBox(height: 12),
+              const SizedBox(height: 6),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
@@ -411,15 +418,6 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                   _reactionButton("👍"),
                   _reactionButton("🔥"),
                 ],
-              ),
-              const Divider(),
-              ListTile(
-                leading: const Icon(Icons.delete_outline),
-                title: const Text("Eliminar mensaje"),
-                onTap: () {
-                  Navigator.pop(context);
-                  _unimplemented("Eliminar mensaje (pronto)");
-                },
               ),
             ],
           ),
@@ -432,7 +430,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     return GestureDetector(
       onTap: () {
         Navigator.pop(context);
-        _unimplemented("Reacción $emoji (pronto)");
+        _showError("Reacciones pronto");
       },
       child: Text(emoji, style: const TextStyle(fontSize: 26)),
     );
@@ -443,25 +441,22 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
   }
 }
 
-// -------------------------------------------------------------------------
-// BURBUJA WHATSAPP MORADA — FINAL
-// -------------------------------------------------------------------------
+// ================== BURBUJA DE MENSAJE ==================
 class MessageBubble extends StatelessWidget {
   final Message message;
   final bool isMe;
 
   const MessageBubble({
-    Key? key,
+    super.key,
     required this.message,
     required this.isMe,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
     final hasImage = message.imageUrls != null && message.imageUrls!.isNotEmpty;
 
-    final bubbleColor =
-        isMe ? const Color(0xFF7A5AF8) : const Color(0xFFF0F0F0);
+    final bubbleColor = isMe ? const Color(0xFF7A5AF8) : const Color(0xFFF0F0F0);
 
     final borderRadius = BorderRadius.only(
       topLeft: const Radius.circular(16),
@@ -500,35 +495,16 @@ class MessageBubble extends StatelessWidget {
                 ),
               ),
             const SizedBox(height: 4),
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  _time(message.timestamp),
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: isMe ? Colors.white70 : Colors.black54,
-                  ),
-                ),
-                if (isMe) ...[
-                  const SizedBox(width: 4),
-                  Icon(
-                    message.isRead ? Icons.done_all : Icons.done,
-                    size: 16,
-                    color: message.isRead
-                        ? Colors.lightBlueAccent
-                        : Colors.white70,
-                  ),
-                ],
-              ],
+            Text(
+              "${message.timestamp.hour}:${message.timestamp.minute.toString().padLeft(2, '0')}",
+              style: TextStyle(
+                fontSize: 11,
+                color: isMe ? Colors.white70 : Colors.black54,
+              ),
             ),
           ],
         ),
       ),
     );
-  }
-
-  String _time(DateTime dt) {
-    return "${dt.hour}:${dt.minute.toString().padLeft(2, '0')}";
   }
 }
