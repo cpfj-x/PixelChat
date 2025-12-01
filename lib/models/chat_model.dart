@@ -8,15 +8,14 @@ class Chat {
   final String? imageUrl;
   final ChatType type;
   final List<String> memberIds;
+  final List<String> adminIds; // <--- AÑADIDO
   final String? description;
   final DateTime createdAt;
   final DateTime lastMessageTime;
-  final String? lastMessage;
-  final String? lastMessageSenderId;
   final String createdBy;
   final bool isMuted;
-  final bool isPublic;
-
+  final String? lastMessage;
+  final String? lastMessageSenderId;
 
   Chat({
     required this.id,
@@ -24,108 +23,105 @@ class Chat {
     this.imageUrl,
     required this.type,
     required this.memberIds,
+    required this.adminIds, // <--- AÑADIDO
     this.description,
     required this.createdAt,
     required this.lastMessageTime,
-    this.lastMessage,
-    this.lastMessageSenderId,
     required this.createdBy,
     required this.isMuted,
-    required this.isPublic,
+    this.lastMessage,
+    this.lastMessageSenderId, required bool isPublic,
   });
 
-  // --------------------------
-  // Convertir a Firestore
-  // --------------------------
+  // ----------------------------------------------------------------------------
+  // FROM MAP
+  // ----------------------------------------------------------------------------
+  factory Chat.fromMap(Map<String, dynamic> map, String id) {
+    return Chat(
+      id: id,
+      name: map['name'] ?? '',
+      imageUrl: map['imageUrl'],
+      type: _parseType(map['type']),
+      memberIds: List<String>.from(map['memberIds'] ?? []),
+      adminIds: List<String>.from(map['adminIds'] ?? []), // <--- AÑADIDO
+      description: map['description'],
+      createdAt: _toDate(map['createdAt']),
+      lastMessageTime: _toDate(map['lastMessageTime']),
+      createdBy: map['createdBy'] ?? '',
+      isMuted: map['isMuted'] ?? false,
+      lastMessage: map['lastMessage'],
+      lastMessageSenderId: map['lastMessageSenderId'], 
+      isPublic: false,
+    );
+  }
+
+  // ----------------------------------------------------------------------------
+  // TO MAP
+  // ----------------------------------------------------------------------------
   Map<String, dynamic> toMap() {
     return {
       'name': name,
       'imageUrl': imageUrl,
       'type': type.name,
       'memberIds': memberIds,
+      'adminIds': adminIds, // <--- AÑADIDO
       'description': description,
       'createdAt': createdAt,
       'lastMessageTime': lastMessageTime,
-      'lastMessage': lastMessage,
-      'lastMessageSenderId': lastMessageSenderId,
       'createdBy': createdBy,
       'isMuted': isMuted,
-      'isPublic': isPublic,
+      'lastMessage': lastMessage,
+      'lastMessageSenderId': lastMessageSenderId,
     };
   }
 
-  // --------------------------
-  // Leer desde Firestore
-  // --------------------------
-  factory Chat.fromMap(Map<String, dynamic> map, String docId) {
+  // ----------------------------------------------------------------------------
+  // COPY WITH
+  // ----------------------------------------------------------------------------
+  Chat copyWith({
+    String? name,
+    String? imageUrl,
+    List<String>? memberIds,
+    List<String>? adminIds,
+    String? description,
+  }) {
     return Chat(
-      id: docId,
-      name: map['name'] ?? '',
-      imageUrl: map['imageUrl'],
-      type: _parseChatType(map['type']),
-      memberIds: List<String>.from(map['memberIds'] ?? []),
-      description: map['description'],
-      createdAt: _toDate(map['createdAt']),
-      lastMessageTime: _toDate(map['lastMessageTime']),
-      lastMessage: map['lastMessage'],
-      lastMessageSenderId: map['lastMessageSenderId'],
-      createdBy: map['createdBy'] ?? '',
-      isMuted: map['isMuted'] ?? false, 
-      isPublic: map['isPublic'] ?? false,
+      id: id,
+      name: name ?? this.name,
+      imageUrl: imageUrl ?? this.imageUrl,
+      type: type,
+      memberIds: memberIds ?? this.memberIds,
+      adminIds: adminIds ?? this.adminIds, // <--- AÑADIDO
+      description: description ?? this.description,
+      createdAt: createdAt,
+      lastMessageTime: lastMessageTime,
+      createdBy: createdBy,
+      isMuted: isMuted,
+      lastMessage: lastMessage,
+      lastMessageSenderId: lastMessageSenderId, 
+      isPublic: false,
     );
   }
 
-  // Conversión segura de fecha
-  static DateTime _toDate(dynamic value) {
-    if (value == null) return DateTime.now();
-    if (value is DateTime) return value;
-    if (value is Timestamp) return value.toDate();
-    return DateTime.now();
-  }
-
-  static ChatType _parseChatType(String? type) {
+  // ----------------------------------------------------------------------------
+  // HELPERS
+  // ----------------------------------------------------------------------------
+  static ChatType _parseType(String? type) {
     switch (type) {
+      case 'direct':
+        return ChatType.direct;
       case 'group':
         return ChatType.group;
       case 'community':
         return ChatType.community;
-      case 'direct':
       default:
         return ChatType.direct;
     }
   }
 
-  // --------------------------
-  // CopyWith
-  // --------------------------
-  Chat copyWith({
-    String? id,
-    String? name,
-    String? imageUrl,
-    ChatType? type,
-    List<String>? memberIds,
-    String? description,
-    DateTime? createdAt,
-    DateTime? lastMessageTime,
-    String? lastMessage,
-    String? lastMessageSenderId,
-    String? createdBy,
-    bool? isMuted,
-  }) {
-    return Chat(
-      id: id ?? this.id,
-      name: name ?? this.name,
-      imageUrl: imageUrl ?? this.imageUrl,
-      type: type ?? this.type,
-      memberIds: memberIds ?? this.memberIds,
-      description: description ?? this.description,
-      createdAt: createdAt ?? this.createdAt,
-      lastMessageTime: lastMessageTime ?? this.lastMessageTime,
-      lastMessage: lastMessage ?? this.lastMessage,
-      lastMessageSenderId: lastMessageSenderId ?? this.lastMessageSenderId,
-      createdBy: createdBy ?? this.createdBy,
-      isMuted: isMuted ?? this.isMuted, 
-      isPublic: false,
-    );
+  static DateTime _toDate(dynamic value) {
+    if (value is Timestamp) return value.toDate();
+    if (value is DateTime) return value;
+    return DateTime.now();
   }
 }
